@@ -1,0 +1,88 @@
+### Test API Endpoints
+### Install "REST Client" extension in VS Code to use these
+
+@baseUrl = http://localhost:5000
+@token = 
+
+### 1. Health Check
+GET {{baseUrl}}/health
+
+### 2. Login - Get Token
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jean@kfh.rw",
+  "password": "password123"
+}
+
+### 3. Get Hospitals
+GET {{baseUrl}}/api/hospitals
+
+### 4. Get Referrals (requires token)
+GET {{baseUrl}}/api/referrals
+Authorization: Bearer {{token}}
+
+### 5. Get Patients (requires token)
+GET {{baseUrl}}/api/patients
+Authorization: Bearer {{token}}
+
+### 6. Get Referral Statistics
+GET {{baseUrl}}/api/referrals/stats
+Authorization: Bearer {{token}}
+
+### 7. Create Patient
+POST {{baseUrl}}/api/patients
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "gender": "male",
+  "dob": "1990-01-15",
+  "phone": "0780000000",
+  "address": "Kigali, Rwanda",
+  "nationalId": "1199999999999999"
+}
+
+### 8. Create Referral
+POST {{baseUrl}}/api/referrals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "patientId": "pat-01",
+  "reason": "Heart condition check",
+  "priority": "Routine",
+  "receivingHospitalId": "hosp-02",
+  "department": "Cardiology"
+}
+
+### 9. Update Referral Status
+PUT {{baseUrl}}/api/referrals/ref-1001/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "approved"
+}
+
+### 10. Get Audit Logs
+GET {{baseUrl}}/api/audit
+Authorization: Bearer {{token}}
+
+### 11. Get All Users (admin only)
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+
+### 12. Verify Token
+GET {{baseUrl}}/api/auth/verify
+Authorization: Bearer {{token}}
+
+###
+### INSTRUCTIONS:
+### 1. Run "Login - Get Token" endpoint first
+### 2. Copy the token from response
+### 3. Update @token variable at top with the token value
+### 4. Now all protected endpoints will work
+### 5. Click "Send Request" above each endpoint to test
