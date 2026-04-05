@@ -286,8 +286,12 @@ export const apiClient = {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) throw new Error('Failed to share patient records');
-      return response.json();
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const errorMessage = body?.message || 'Failed to share patient records';
+        throw new Error(errorMessage);
+      }
+      return body;
     },
 
     getShared: async () => {

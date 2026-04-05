@@ -29,7 +29,6 @@ export function ReferralDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
   const [sharedRecords, setSharedRecords] = useState<any>(null);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [shareFormData, setShareFormData] = useState({
@@ -42,9 +41,11 @@ export function ReferralDetailsPage() {
     clinicalNotes: '',
   });
   const [sharingRecords, setSharingRecords] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
 
   // Helper function to update referral status with proper error handling
   async function updateReferralStatusWithAuth(referralId: string, newStatus: ReferralStatus) {
@@ -227,33 +228,15 @@ export function ReferralDetailsPage() {
   // Check if user is from requesting hospital
   const isRequestingHospital = user && referral && user.hospital_id === referral.requesting_hospital_id;
 
-  function handleAdvance() {
-    if (!referral || !flow.next) return;
-    
-    // Only receiving hospital can approve/reject
-    if (!canApproveOrReject) {
-      alert('Only the receiving hospital can approve or reject this referral');
-      return;
-    }
-    
-    // If approving and receiving hospital, show share records modal
-    if (flow.next === 'approved' && user && user.hospital_id === referral.receiving_hospital_id) {
-      setShowShareModal(true);
-    } else if (flow.next === 'rejected') {
-      // For rejection, confirm and update directly
-      if (window.confirm('Are you sure you want to reject this referral?')) {
-        updateReferralStatus(referral.id, flow.next);
-      }
-    } else {
-      // Otherwise just update status directly
-      updateReferralStatus(referral.id, flow.next);
-    }
-  }
+  // Both hospitals involved in the referral can share records
+  const canShareRecords = user && referral &&
+    (user.hospital_id === referral.requesting_hospital_id || user.hospital_id === referral.receiving_hospital_id);
 
   async function handleShareRecords() {
     if (!referral) return;
     
     try {
+      setShareError(null);
       setSharingRecords(true);
       const response = await apiClient.patientRecords.share({
         referralId: referral.id,
@@ -276,10 +259,8 @@ export function ReferralDetailsPage() {
         // Update shared records in display
         setSharedRecords(response.data);
         
-        // Close modal
-        setShowShareModal(false);
-        
-        // Reset form
+        // Clear any previous share error and reset form
+        setShareError(null);
         setShareFormData({
           testResults: '',
           medications: '',
@@ -289,10 +270,11 @@ export function ReferralDetailsPage() {
           currentDiagnosis: '',
           clinicalNotes: '',
         });
+        setShowConfirmModal(false);
       }
     } catch (err: any) {
       console.error('Failed to share records:', err);
-      alert(err.message || 'Failed to share patient records');
+      setShareError(err.message || 'Failed to share patient records');
     } finally {
       setSharingRecords(false);
     }
@@ -453,11 +435,7 @@ export function ReferralDetailsPage() {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to reject this referral?')) {
-                      updateReferralStatusWithAuth(referral.id, 'rejected');
-                    }
-                  }}
+                  onClick={() => setShowRejectModal(true)}
                   disabled={updatingStatus}
                   className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
                 >
@@ -478,7 +456,7 @@ export function ReferralDetailsPage() {
         )}
 
         {/* Referral Accepted Success Card */}
-        {referral.status === 'approved' && canApproveOrReject && (
+        {referral.status === 'approved' && canShareRecords && (
           <div className="mt-6 rounded-lg border border-green-200 bg-green-50 px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -503,7 +481,10 @@ export function ReferralDetailsPage() {
                   👤 View Patient
                 </button>
                 <button
-                  onClick={() => setShowConfirmModal(true)}
+                  onClick={() => {
+                    setShareError(null);
+                    setShowConfirmModal(true);
+                  }}
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
                 >
                   📤 Send Patient Information
@@ -682,7 +663,7 @@ export function ReferralDetailsPage() {
                 <span className="text-sm font-semibold text-slate-900">{generateReferralReference(referral?.id ?? '')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Receiving Hospital</span>
+                <span className="text-sm text-slate-600">Requesting Hospital</span>
                 <span className="text-sm font-semibold text-slate-900">{hospitalMap.get(referral?.requesting_hospital_id) ?? 'Unknown'}</span>
               </div>
             </div>
@@ -717,18 +698,25 @@ export function ReferralDetailsPage() {
               </ul>
             </div>
 
+            {shareError ? (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                <p className="font-semibold">Could not share patient records</p>
+                <p className="mt-1">{shareError}</p>
+              </div>
+            ) : null}
+
             <div className="mt-6 flex gap-3">
               <button
-                onClick={() => setShowConfirmModal(false)}
+                onClick={() => {
+                  setShareError(null);
+                  setShowConfirmModal(false);
+                }}
                 className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  setShowConfirmModal(false);
-                  setShowShareModal(true);
-                }}
+                onClick={handleShareRecords}
                 className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 flex items-center justify-center gap-2"
               >
                 <Send className="h-4 w-4" />
@@ -739,122 +727,45 @@ export function ReferralDetailsPage() {
         </div>
       )}
 
-      {/* Share Medical Records Modal */}
-      {showShareModal && canApproveOrReject && (
+      {/* Confirm Reject Referral Modal */}
+      {showRejectModal && canApproveOrReject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Share Patient Medical Records</h2>
-              <button
-                onClick={() => setShowShareModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <p className="mt-2 text-sm text-slate-600">
-              Fill in the medical records you want to share with the requesting hospital for {referral?.patient_name}
-            </p>
-
-            <div className="mt-6 space-y-4 max-h-96 overflow-y-auto">
-              <div>
-                <label className="text-sm font-medium text-slate-700">Test Results</label>
-                <textarea
-                  value={shareFormData.testResults}
-                  onChange={(e) => setShareFormData({ ...shareFormData, testResults: e.target.value })}
-                  placeholder="E.g., Blood work, X-rays, CT scans..."
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-600" />
               </div>
-
               <div>
-                <label className="text-sm font-medium text-slate-700">Medications</label>
-                <textarea
-                  value={shareFormData.medications}
-                  onChange={(e) => setShareFormData({ ...shareFormData, medications: e.target.value })}
-                  placeholder="List current medications..."
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700">Allergies</label>
-                <textarea
-                  value={shareFormData.allergies}
-                  onChange={(e) => setShareFormData({ ...shareFormData, allergies: e.target.value })}
-                  placeholder="List known allergies..."
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700">Medical History</label>
-                <textarea
-                  value={shareFormData.medicalHistory}
-                  onChange={(e) => setShareFormData({ ...shareFormData, medicalHistory: e.target.value })}
-                  placeholder="Previous surgeries, conditions, treatments..."
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700">Vitals</label>
-                <textarea
-                  value={shareFormData.vitalsLastRecorded}
-                  onChange={(e) => setShareFormData({ ...shareFormData, vitalsLastRecorded: e.target.value })}
-                  placeholder="BP, HR, Temperature, SpO2..."
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700">Diagnoses</label>
-                <textarea
-                  value={shareFormData.currentDiagnosis}
-                  onChange={(e) => setShareFormData({ ...shareFormData, currentDiagnosis: e.target.value })}
-                  placeholder="Current diagnoses..."
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700">Clinical Notes</label>
-                <textarea
-                  value={shareFormData.clinicalNotes}
-                  onChange={(e) => setShareFormData({ ...shareFormData, clinicalNotes: e.target.value })}
-                  placeholder="Any additional clinical notes..."
-                  rows={3}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                />
+                <h2 className="text-lg font-semibold text-slate-900">Reject Referral</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Are you sure you want to reject this referral? This action cannot be undone.
+                </p>
               </div>
             </div>
 
             <div className="mt-6 flex gap-3">
               <button
-                onClick={() => setShowShareModal(false)}
-                disabled={sharingRecords}
-                className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                onClick={() => setShowRejectModal(false)}
+                className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
-                onClick={handleShareRecords}
-                disabled={sharingRecords}
-                className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                onClick={() => {
+                  if (referral) {
+                    updateReferralStatusWithAuth(referral.id, 'rejected');
+                  }
+                  setShowRejectModal(false);
+                }}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
               >
-                {sharingRecords ? 'Sharing...' : 'Share & Approve'}
+                Reject Referral
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

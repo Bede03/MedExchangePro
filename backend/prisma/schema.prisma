@@ -45,12 +45,28 @@ model Hospital {
   
   users                  User[]
   patients               Patient[]
+  departments            HospitalDepartment[]
   
   referralsRequesting    Referral[] @relation("requestingHospital")
   referralsReceiving     Referral[] @relation("receivingHospital")
   sharedPatientRecords   SharedPatientRecord[]
 
   @@map("hospitals")
+}
+
+model HospitalDepartment {
+  id        String   @id @default(cuid())
+  hospitalId String  @map("hospital_id")
+  hospital  Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  
+  departmentName  String  @map("department_name")
+  category        String  // e.g., "Surgery", "Cardiology", "Internal Medicine"
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@unique([hospitalId, departmentName])
+  @@map("hospital_departments")
 }
 
 model Patient {
@@ -181,12 +197,12 @@ model SharedPatientRecord {
   receivingHospitalId   String   @map("receiving_hospital_id")
   receivingHospital     Hospital @relation(fields: [receivingHospitalId], references: [id], onDelete: Cascade)
   
-  // Medical records - encrypted for security
-  testResults           Json?    @map("test_results") // Array of test results with date and values
-  medications           Json?    @map("medications")   // Array of current medications
-  allergies             Json?    @map("allergies")     // Array of allergies
-  medicalHistory        Json?    @map("medical_history") // Previous diagnoses and treatments
-  vitalsLastRecorded    Json?    @map("vitals_last_recorded") // BP, HR, Temp, etc.
+  // Medical records
+  testResults           String?  @map("test_results")
+  medications           String?  @map("medications")
+  allergies             String?  @map("allergies")
+  medicalHistory        String?  @map("medical_history")
+  vitalsLastRecorded    String?  @map("vitals_last_recorded")
   currentDiagnosis      String?  @map("current_diagnosis")
   clinicalNotes         String?  @map("clinical_notes")
   

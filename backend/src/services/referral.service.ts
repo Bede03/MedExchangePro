@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/errors';
 import { JwtPayload } from '../utils/jwt';
+import { validateReferralDepartment, hospitalHasDepartment } from '../utils/departments';
 import { notificationService } from './notification.service';
 
 const prisma = new PrismaClient();
@@ -29,12 +30,22 @@ export class ReferralService {
       throw new AppError(404, 'Receiving hospital not found');
     }
 
+    // Validate department
+    const deptValidation = validateReferralDepartment(
+      data.department,
+      data.receivingHospitalId,
+      receivingHospital.name
+    );
+    if (!deptValidation.isValid) {
+      throw new AppError(400, `Invalid department: ${deptValidation.errors.join(', ')}`);
+    }
+
     const referral = await prisma.referral.create({
       data: {
         patientId: data.patientId,
         reason: data.reason,
         priority: data.priority,
-        department: data.department,
+        department: deptValidation.department as string,
         requestingHospitalId: currentUser.hospitalId,
         receivingHospitalId: data.receivingHospitalId,
       },

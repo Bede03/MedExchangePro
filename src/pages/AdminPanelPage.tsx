@@ -3,9 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { Table } from '../components/UI/Table';
 import { User, AuditLog } from '../types';
-import { Pencil, X, Download, Users, Building2, FileText, Trash2, Check, LayoutDashboard, Activity, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { apiClient } from '../services/api';
+import { Pencil, X, Download, Users, Building2, FileText, Trash2, Check, LayoutDashboard, Activity, Eye, EyeOff, AlertCircle, ChevronDown, Stethoscope } from 'lucide-react';
+import { getHospitalCapabilitiesSummary } from '../data/departments';
 
-type AdminTab = 'dashboard' | 'users' | 'hospitals' | 'audit';
+type AdminTab = 'dashboard' | 'users' | 'hospitals' | 'departments' | 'audit';
 
 type UserWithMeta = {
   id: string;
@@ -22,6 +24,7 @@ export function AdminPanelPage() {
   const { user } = useAuth();
   const { hospitals, users, updateUser, addUser, addHospital, updateHospital, deleteHospital, auditLogs, referrals } = useMockData();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [expandedHospital, setExpandedHospital] = useState<string | null>(null);
 
   // Audit log filters
   const [auditActionFilter, setAuditActionFilter] = useState('All Actions');
@@ -472,6 +475,13 @@ export function AdminPanelPage() {
         >
           <Building2 className="h-4 w-4" />
           Hospitals
+        </button>
+        <button
+          onClick={() => setActiveTab('departments')}
+          className={tabButtonClass('departments')}
+        >
+          <Stethoscope className="h-4 w-4" />
+          Departments
         </button>
         <button
           onClick={() => setActiveTab('audit')}
@@ -1068,6 +1078,78 @@ export function AdminPanelPage() {
 
           <div className="text-sm text-slate-500">
             Showing {filteredHospitals.length} of {hospitalData.length} hospitals
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'departments' && (
+        <div className="space-y-6">
+          <header>
+            <h2 className="text-lg font-semibold text-slate-900">Hospital Departments</h2>
+            <p className="text-sm text-slate-500">View hospitals and their medical department capabilities.</p>
+          </header>
+
+          <div className="space-y-4">
+            {hospitals.map((hospital) => {
+              const capabilities = getHospitalCapabilitiesSummary(hospital.id, hospital.name);
+              return (
+                <div key={capabilities.hospitalId} className="rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <button
+                    onClick={() => setExpandedHospital(expandedHospital === capabilities.hospitalId ? null : capabilities.hospitalId)}
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="text-left">
+                      <h2 className="text-lg font-semibold text-slate-900">{capabilities.hospitalName}</h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        <span className="font-medium">{capabilities.totalDepartments}</span> departments 
+                        ({capabilities.sharedDepartments} shared, {capabilities.uniqueDepartments} unique)
+                      </p>
+                    </div>
+                    <ChevronDown 
+                      className={`h-5 w-5 text-slate-400 transition-transform ${expandedHospital === capabilities.hospitalId ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {expandedHospital === capabilities.hospitalId && (
+                    <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                          <h3 className="font-semibold text-slate-900 mb-3">Shared Departments ({capabilities.sharedDepartments})</h3>
+                          <div className="space-y-2">
+                            {capabilities.departments.filter(d => !capabilities.uniqueDepts.includes(d.name)).map(dept => (
+                              <div key={dept.id} className="flex items-center gap-2 text-sm">
+                                <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                                <span className="text-slate-700">{dept.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {capabilities.uniqueDepartments > 0 && (
+                          <div>
+                            <h3 className="font-semibold text-slate-900 mb-3">Unique Departments ({capabilities.uniqueDepartments})</h3>
+                            <div className="space-y-2">
+                              {capabilities.uniqueDepts.map(deptName => (
+                                <div key={deptName} className="flex items-center gap-2 text-sm">
+                                  <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                                  <span className="text-slate-700">{deptName}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <p className="text-sm text-blue-900">
+              <strong>Legend:</strong> Green dots indicate departments shared with other hospitals. Blue dots indicate hospital-specific specialties.
+            </p>
           </div>
         </div>
       )}

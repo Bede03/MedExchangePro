@@ -25,9 +25,13 @@ export class PatientRecordsService {
       throw new AppError(404, 'Referral not found');
     }
 
-    // Only requesting hospital can share records (and only when approved)
-    if (referral.requestingHospitalId !== currentUser.hospitalId && currentUser.role !== 'admin') {
-      throw new AppError(403, 'Only requesting hospital can share patient records');
+    // Both requesting and receiving hospitals can share records for the referral
+    const isInvolvedHospital =
+      currentUser.hospitalId === referral.requestingHospitalId ||
+      currentUser.hospitalId === referral.receivingHospitalId;
+
+    if (!isInvolvedHospital && currentUser.role !== 'admin') {
+      throw new AppError(403, 'Only hospitals involved in the referral can share patient records');
     }
 
     if (referral.status !== 'approved') {

@@ -23,7 +23,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
     if (!stored) return null;
     try {
-      return JSON.parse(stored) as User;
+      const parsed = JSON.parse(stored);
+
+      // normalize storage from earlier versions and always use hospital_id
+      if (parsed && parsed.hospital_id && parsed.id) {
+        return parsed as User;
+      }
+
+      if (parsed && parsed.hospitalId && parsed.id) {
+        return {
+          id: parsed.id,
+          full_name: parsed.fullName || parsed.full_name || '',
+          email: parsed.email,
+          role: parsed.role,
+          hospital_id: parsed.hospitalId,
+        };
+      }
+
+      return null;
     } catch {
       return null;
     }
@@ -75,11 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (response.success && response.data) {
         const { user: userData, token } = response.data;
-        
-        // Save token and user
-        localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
-        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(userData));
-        
+
         // Convert backend field names to frontend format
         const formattedUser: User = {
           id: userData.id,
@@ -88,7 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: userData.role,
           hospital_id: userData.hospitalId,
         };
-        
+
+        // Save token and normalized user
+        localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
+        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(formattedUser));
+
         setUser(formattedUser);
       }
     } catch (err: any) {
@@ -121,11 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (response.success && response.data) {
         const { user: userData, token } = response.data;
-        
-        // Save token and user
-        localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
-        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(userData));
-        
+
         // Convert backend field names to frontend format
         const formattedUser: User = {
           id: userData.id,
@@ -134,7 +147,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: userData.role,
           hospital_id: userData.hospitalId,
         };
-        
+
+        // Save token and normalized user
+        localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
+        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(formattedUser));
+
         setUser(formattedUser);
       }
     } catch (err: any) {

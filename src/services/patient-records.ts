@@ -1,4 +1,4 @@
-import { api } from './api';
+import { apiClient } from './api';
 
 /**
  * Patient Records API Service
@@ -88,7 +88,7 @@ class PatientRecordsService {
     }
   ) {
     try {
-      const response = await api.post('/patient-records/share', {
+      const response = await apiClient.patientRecords.share({
         referralId,
         ...medicalData,
       });
@@ -103,8 +103,8 @@ class PatientRecordsService {
    */
   async getSharedRecords(): Promise<SharedPatientRecord[]> {
     try {
-      const response = await api.get('/patient-records/shared');
-      return response.data.data || [];
+      const response = await apiClient.patientRecords.getShared();
+      return response.data || [];
     } catch (error) {
       throw error;
     }
@@ -115,8 +115,8 @@ class PatientRecordsService {
    */
   async getSharedRecordByReferral(referralId: string): Promise<SharedPatientRecord> {
     try {
-      const response = await api.get(`/patient-records/referral/${referralId}`);
-      return response.data.data;
+      const response = await apiClient.patientRecords.getByReferral(referralId);
+      return response.data;
     } catch (error) {
       throw error;
     }
@@ -127,8 +127,8 @@ class PatientRecordsService {
    */
   async getPatientRecords(patientId: string) {
     try {
-      const response = await api.get(`/patient-records/${patientId}`);
-      return response.data.data;
+      const response = await apiClient.patientRecords.getShared();
+      return response.data;
     } catch (error) {
       throw error;
     }

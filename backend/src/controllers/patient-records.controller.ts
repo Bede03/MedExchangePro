@@ -12,14 +12,14 @@ export const sharePatientRecords = async (req: Request, res: Response) => {
     const userAgent = getUserAgent(req);
     await auditService.logAction(
       'Data_Accessed',
-      'PatientRecord',
-      sharedRecord.id,
+      'Patient',
+      sharedRecord.patientId,
       req.user!.id,
       ipAddress,
       userAgent,
       {
         action: 'Patient records shared',
-        patientName: sharedRecord.patient.name,
+        patientId: sharedRecord.patientId,
         receivingHospitalId: sharedRecord.receivingHospitalId,
       }
     );

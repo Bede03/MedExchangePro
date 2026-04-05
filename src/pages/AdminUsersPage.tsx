@@ -26,10 +26,16 @@ export function AdminUsersPage() {
     [hospitals, user?.hospital_id]
   );
 
-  const hospitalUsers = useMemo(
-    () => users.filter((u) => u.hospital_id === user?.hospital_id),
-    [users, user?.hospital_id]
-  );
+  const hospitalUsers = useMemo(() => {
+    if (!user) return [];
+
+    // Admin can manage all users; non-admin users only see their hospital
+    if (user.role === 'admin') {
+      return users;
+    }
+
+    return users.filter((u) => u.hospital_id === user.hospital_id);
+  }, [users, user]);
 
   const [activeMap, setActiveMap] = useState<Record<string, boolean>>(() =>
     hospitalUsers.reduce((acc, u, idx) => {

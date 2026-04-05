@@ -11,6 +11,7 @@ const router = Router();
 
 router.get('/', hospitalController.getAllHospitals);
 router.get('/:id', hospitalController.getHospitalById);
+router.get('/:id/departments', hospitalController.getHospitalDepartmentsEndpoint);
 
 router.use(authMiddleware);
 router.post('/', requireAdmin, validateRequest(createHospitalSchema), hospitalController.createHospital);
