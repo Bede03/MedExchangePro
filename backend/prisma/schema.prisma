@@ -99,6 +99,7 @@ enum Gender {
 
 model Referral {
   id                      String                @id @default(cuid())
+  referralNumber          Int                   @unique @map("referral_number")
   patientId               String                @map("patient_id")
   patient                 Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
   

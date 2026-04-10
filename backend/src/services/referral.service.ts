@@ -40,8 +40,16 @@ export class ReferralService {
       throw new AppError(400, `Invalid department: ${deptValidation.errors.join(', ')}`);
     }
 
+    // Generate next referral number
+    const lastReferral = await prisma.referral.findFirst({
+      orderBy: { referralNumber: 'desc' },
+      select: { referralNumber: true },
+    });
+    const nextReferralNumber = (lastReferral?.referralNumber || 0) + 1;
+
     const referral = await prisma.referral.create({
       data: {
+        referralNumber: nextReferralNumber,
         patientId: data.patientId,
         reason: data.reason,
         priority: data.priority,

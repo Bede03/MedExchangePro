@@ -34,6 +34,7 @@ export type ReferralPriority = 'Emergency' | 'Urgent' | 'Routine';
 
 export interface Referral {
   id: string;
+  referral_number?: number;
   patient_id: string;
   patient_name: string;
   reason: string;

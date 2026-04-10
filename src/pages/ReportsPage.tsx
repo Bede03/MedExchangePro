@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Users,
   FileText,
@@ -28,15 +28,7 @@ import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { StatCard } from '../components/UI/StatCard';
 import { StatusBadge } from '../components/UI/StatusBadge';
-
-const DEPARTMENTS = [
-  'Cardiology',
-  'Surgery',
-  'Pediatrics',
-  'Orthopedics',
-  'Radiology',
-  'ICU',
-];
+import { apiClient } from '../services/api';
 
 type DateRange = 'all' | '7days' | '30days' | '90days';
 type StatusFilter = 'all' | 'pending' | 'approved' | 'completed' | 'rejected';
@@ -67,6 +59,44 @@ export function ReportsPage() {
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
+  const [departmentsError, setDepartmentsError] = useState<string | null>(null);
+
+  // Fetch departments for current hospital
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (!user?.hospital_id) {
+        setDepartmentsLoading(false);
+        return;
+      }
+
+      try {
+        setDepartmentsLoading(true);
+        const response = await apiClient.hospitals.getDepartments(user.hospital_id);
+        
+        if (response.success && response.data?.departments) {
+          // Extract just the department names
+          const deptNames = response.data.departments.map((dept: any) => 
+            typeof dept === 'string' ? dept : dept.category || dept.departmentName
+          );
+          setDepartments(deptNames);
+          setDepartmentsError(null);
+        } else {
+          setDepartments([]);
+          setDepartmentsError('No departments found');
+        }
+      } catch (error) {
+        console.error('Failed to fetch departments:', error);
+        setDepartments([]);
+        setDepartmentsError('Failed to load departments');
+      } finally {
+        setDepartmentsLoading(false);
+      }
+    };
+
+    fetchDepartments();
+  }, [user?.hospital_id]);
 
   const hospitalMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -145,7 +175,7 @@ export function ReportsPage() {
   // Department report
   const departmentReport = useMemo(() => {
     const dept: Record<string, number> = {};
-    DEPARTMENTS.forEach((d) => (dept[d] = 0));
+    departments.forEach((d) => (dept[d] = 0));
 
     filteredReferrals.forEach((ref) => {
       if (ref.department && dept.hasOwnProperty(ref.department)) {
@@ -156,7 +186,7 @@ export function ReportsPage() {
     return Object.entries(dept)
       .filter(([, count]) => count > 0)
       .sort((a, b) => b[1] - a[1]);
-  }, [filteredReferrals]);
+  }, [filteredReferrals, departments]);
 
   // Hospital report
   const hospitalReport = useMemo(() => {
@@ -182,15 +212,151 @@ export function ReportsPage() {
       .slice(0, 5);
   }, [filteredReferrals]);
 
-  // Export handlers
+  const escapeCsvValue = (value: string | number | boolean | null | undefined) => {
+    if (value === null || value === undefined) return '""';
+    const escaped = String(value).replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
+
+  const buildPdfHtml = () => {
+    const reportTitle = 'MedExchange Report';
+    const dateText = new Date().toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    });
+
+    const statusRows = Object.entries(statusReport)
+      .map(([status, count]) => `<tr><td>${status.charAt(0).toUpperCase() + status.slice(1)}</td><td>${count}</td></tr>`)
+      .join('');
+
+    const departmentRows = departmentReport
+      .map(([dept, count]) => `<tr><td>${dept}</td><td>${count}</td></tr>`)
+      .join('');
+
+    const hospitalRows = hospitalReport
+      .map(([hospitalName, count]) => `<tr><td>${hospitalName}</td><td>${count}</td></tr>`)
+      .join('');
+
+    const referralRows = recentReferrals
+      .map(
+        (ref) => `
+          <tr>
+            <td>${formatDate(ref.created_at)}</td>
+            <td>${ref.patient_name}</td>
+            <td>${hospitalMap.get(ref.requesting_hospital_id) || ref.requesting_hospital_id}</td>
+            <td>${hospitalMap.get(ref.receiving_hospital_id) || ref.receiving_hospital_id}</td>
+            <td>${ref.department}</td>
+            <td>${ref.status}</td>
+            <td>${ref.priority}</td>
+          </tr>`
+      )
+      .join('');
+
+    return `
+      <html>
+        <head>
+          <title>${reportTitle}</title>
+          <style>
+            body { font-family: Inter, system-ui, sans-serif; margin: 24px; color: #0f172a; }
+            h1, h2, h3 { margin: 0 0 12px 0; }
+            .summary { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+            .summary-box { flex: 1 1 180px; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; background: #f8fafc; }
+            .summary-box span { display: block; margin-top: 8px; font-size: 1.25rem; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+            th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+            th { background: #e2e8f0; }
+            .section { margin-bottom: 24px; }
+            .small { color: #475569; font-size: 0.95rem; }
+          </style>
+        </head>
+        <body>
+          <h1>${reportTitle}</h1>
+          <p class="small">Generated on ${dateText}</p>
+          <div class="summary">
+            <div class="summary-box"><strong>Total Patients</strong><span>${stats.patients}</span></div>
+            <div class="summary-box"><strong>Total Referrals</strong><span>${stats.referrals}</span></div>
+            <div class="summary-box"><strong>Pending Referrals</strong><span>${stats.pending}</span></div>
+            <div class="summary-box"><strong>Completed Referrals</strong><span>${stats.completed}</span></div>
+          </div>
+
+          <div class="section">
+            <h2>Referral Status</h2>
+            <table><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>${statusRows}</tbody></table>
+          </div>
+
+          <div class="section">
+            <h2>Referrals by Department</h2>
+            <table><thead><tr><th>Department</th><th>Count</th></tr></thead><tbody>${departmentRows}</tbody></table>
+          </div>
+
+          <div class="section">
+            <h2>Referrals by Hospital</h2>
+            <table><thead><tr><th>Hospital</th><th>Count</th></tr></thead><tbody>${hospitalRows}</tbody></table>
+          </div>
+
+          <div class="section">
+            <h2>Recent Referrals</h2>
+            <table><thead><tr><th>Date</th><th>Patient</th><th>Requesting Hospital</th><th>Receiving Hospital</th><th>Department</th><th>Status</th><th>Priority</th></tr></thead><tbody>${referralRows}</tbody></table>
+          </div>
+        </body>
+      </html>
+    `;
+  };
+
   const handleExportPDF = () => {
-    console.log('Export PDF clicked');
-    alert('PDF export functionality to be implemented');
+    const html = buildPdfHtml();
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+    if (!printWindow) {
+      return alert('Unable to open the print window. Please allow popups for this site.');
+    }
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   const handleExportCSV = () => {
-    console.log('Export CSV clicked');
-    alert('CSV export functionality to be implemented');
+    const headers = [
+      'Date',
+      'Patient Name',
+      'Patient ID',
+      'Reason',
+      'Department',
+      'Status',
+      'Priority',
+      'Requesting Hospital',
+      'Receiving Hospital',
+    ];
+
+    const rows = filteredReferrals.map((ref) => [
+      formatDate(ref.created_at),
+      ref.patient_name,
+      ref.patient_id,
+      ref.reason,
+      ref.department,
+      ref.status,
+      ref.priority,
+      hospitalMap.get(ref.requesting_hospital_id) || ref.requesting_hospital_id,
+      hospitalMap.get(ref.receiving_hospital_id) || ref.receiving_hospital_id,
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsvValue(cell)).join(','))
+      .join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `medexchange-report-${dateStamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handlePrint = () => {
@@ -362,18 +528,26 @@ export function ReportsPage() {
                   >
                     All Departments
                   </button>
-                  {DEPARTMENTS.map((dept) => (
-                    <button
-                      key={dept}
-                      onClick={() => {
-                        setDepartmentFilter(dept);
-                        setIsDepartmentMenuOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100"
-                    >
-                      {dept}
-                    </button>
-                  ))}
+                  {departmentsLoading ? (
+                    <div className="px-4 py-2 text-sm text-slate-500">Loading departments...</div>
+                  ) : departmentsError ? (
+                    <div className="px-4 py-2 text-sm text-red-500">{departmentsError}</div>
+                  ) : departments.length === 0 ? (
+                    <div className="px-4 py-2 text-sm text-slate-500">No departments available</div>
+                  ) : (
+                    departments.map((dept) => (
+                      <button
+                        key={dept}
+                        onClick={() => {
+                          setDepartmentFilter(dept);
+                          setIsDepartmentMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100"
+                      >
+                        {dept}
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>

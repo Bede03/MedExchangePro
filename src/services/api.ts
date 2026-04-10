@@ -211,6 +211,15 @@ export const apiClient = {
       if (!response.ok) throw new Error('Failed to fetch hospital');
       return response.json();
     },
+
+    getDepartments: async (id: string) => {
+      const response = await fetch(`${API_URL}/api/hospitals/${id}/departments`, {
+        headers: apiClient.getHeaders(true),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch hospital departments');
+      return response.json();
+    },
   },
 
   // User endpoints

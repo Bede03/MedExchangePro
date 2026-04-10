@@ -1,16 +1,22 @@
 /**
- * Generate a user-friendly referral reference from the full ID
+ * Generate a user-friendly referral reference from the referral number
  * Examples:
- * CMNCBQTTN0003ZKITV85LX5HA -> REF-CMNCBQ
- * XYZABC1234567890DEFGHIJ -> REF-XYZABC
+ * 1 -> REF-0001
+ * 42 -> REF-0042
  */
-export function generateReferralReference(id: string): string {
-  const friendlyPart = id.substring(0, 6).toUpperCase();
+export function generateReferralReference(numberOrId: string | number): string {
+  // If it's a number or numeric string, format as REF-XXXX
+  if (typeof numberOrId === 'number' || !isNaN(Number(numberOrId))) {
+    const num = Number(numberOrId);
+    return `REF-${String(num).padStart(4, '0')}`;
+  }
+  // Fallback for old ID format
+  const friendlyPart = String(numberOrId).substring(0, 6).toUpperCase();
   return `REF-${friendlyPart}`;
 }
 
 /**
- * Format referral ID for display with optional formatting
+ * Format referral ID for display
  */
 export function formatReferralId(id: string): string {
   return id.toUpperCase();

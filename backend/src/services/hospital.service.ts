@@ -98,6 +98,27 @@ export class HospitalService {
       where: { id },
     });
   }
+
+  async getHospitalDepartments(id: string) {
+    const hospital = await prisma.hospital.findUnique({
+      where: { id },
+    });
+
+    if (!hospital) {
+      throw new AppError(404, 'Hospital not found');
+    }
+
+    const departments = await prisma.hospitalDepartment.findMany({
+      where: { hospitalId: id },
+      select: {
+        id: true,
+        category: true,
+        departmentName: true,
+      },
+    });
+
+    return departments;
+  }
 }
 
 export const hospitalService = new HospitalService();

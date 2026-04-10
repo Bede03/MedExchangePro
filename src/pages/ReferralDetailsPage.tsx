@@ -90,6 +90,7 @@ export function ReferralDetailsPage() {
           // Map backend fields to frontend format
           const mapped: Partial<Referral> = {
             id: response.data.id,
+            referral_number: response.data.referralNumber,
             patient_id: response.data.patientId,
             patient_name: response.data.patient?.name || '',
             reason: response.data.reason,
@@ -308,10 +309,9 @@ export function ReferralDetailsPage() {
             </p>
             <div className="mt-2 flex items-center gap-2">
               <span
-                title={`Full ID: ${formatReferralId(referral.id)}`}
                 className="cursor-help rounded-md bg-slate-100 px-2 py-1 font-mono text-sm font-semibold text-slate-700"
               >
-                {generateReferralReference(referral.id)}
+                {generateReferralReference(referral.referral_number || referral.id)}
               </span>
               <button
                 onClick={handleCopyId}
@@ -660,7 +660,7 @@ export function ReferralDetailsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Referral</span>
-                <span className="text-sm font-semibold text-slate-900">{generateReferralReference(referral?.id ?? '')}</span>
+                <span className="text-sm font-semibold text-slate-900">{generateReferralReference(referral?.referral_number ?? referral?.id ?? '')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Requesting Hospital</span>

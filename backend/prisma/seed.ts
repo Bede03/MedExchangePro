@@ -14,6 +14,7 @@ async function main() {
   await prisma.referral.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.hospitalDepartment.deleteMany();
   await prisma.hospital.deleteMany();
 
   // Create hospitals
@@ -32,6 +33,29 @@ async function main() {
   });
 
   console.log('✅ Hospitals created');
+
+  // Create hospital departments
+  const departments = ['Cardiology', 'Surgery', 'Pediatrics', 'Orthopedics', 'Radiology', 'ICU', 'Neurology'];
+  
+  for (const dept of departments) {
+    await prisma.hospitalDepartment.create({
+      data: {
+        hospitalId: hospital1.id,
+        departmentName: dept,
+        category: dept,
+      },
+    });
+    
+    await prisma.hospitalDepartment.create({
+      data: {
+        hospitalId: hospital2.id,
+        departmentName: dept,
+        category: dept,
+      },
+    });
+  }
+
+  console.log('✅ Hospital departments created');
 
   // Create users
   const user1 = await prisma.user.create({
@@ -110,6 +134,7 @@ async function main() {
 
   await prisma.referral.create({
     data: {
+      referralNumber: 1,
       patientId: patient1.id,
       reason: 'Heart attack',
       priority: 'Emergency',
@@ -124,6 +149,7 @@ async function main() {
 
   await prisma.referral.create({
     data: {
+      referralNumber: 2,
       patientId: patient2.id,
       reason: 'Post-surgical complication',
       priority: 'Urgent',
@@ -138,6 +164,7 @@ async function main() {
 
   await prisma.referral.create({
     data: {
+      referralNumber: 3,
       patientId: patient2.id,
       reason: 'ICU monitoring',
       priority: 'Emergency',
@@ -152,6 +179,7 @@ async function main() {
   // Add referrals FROM King Faisal Hospital TO CHUK (so CHUK can see incoming referrals)
   await prisma.referral.create({
     data: {
+      referralNumber: 4,
       patientId: patient3.id,
       reason: 'chest imaging report',
       priority: 'Urgent',
@@ -165,6 +193,7 @@ async function main() {
 
   await prisma.referral.create({
     data: {
+      referralNumber: 5,
       patientId: patient3.id,
       reason: 'Orthopedic consultation',
       priority: 'Routine',
@@ -178,6 +207,7 @@ async function main() {
 
   await prisma.referral.create({
     data: {
+      referralNumber: 6,
       patientId: patient3.id,
       reason: 'Neurology consultation',
       priority: 'Urgent',
@@ -188,6 +218,8 @@ async function main() {
       createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 60 * 1),
     },
   });
+
+  console.log('✅ Referrals created');
 
   console.log('✅ Referrals created');
 

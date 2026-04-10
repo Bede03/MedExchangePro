@@ -1,18 +1,21 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Eye, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { StatusBadge } from '../components/UI/StatusBadge';
 import { Table } from '../components/UI/Table';
+import { apiClient } from '../services/api';
 
 type SortOption = 'patient_name' | 'hospital' | 'submission_date' | 'status';
 type SortDirection = 'asc' | 'desc';
 type StatusSort = 'pending' | 'approved' | 'completed' | 'rejected';
 
 export function ReferralsPage() {
-  const { referrals, hospitals } = useMockData();
+  const { hospitals } = useMockData();
   const { user } = useAuth();
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('patient_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -22,6 +25,28 @@ export function ReferralsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Fetch referrals from API
+  useEffect(() => {
+    const fetchReferrals = async () => {
+      try {
+        setIsLoading(true);
+        const response = await apiClient.referrals.list();
+        if (response.success && response.data) {
+          setReferrals(response.data);
+        } else {
+          setReferrals([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch referrals:', err);
+        setReferrals([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReferrals();
+  }, []);
+
   const hospitalMap = useMemo(() => {
     const map = new Map<string, string>();
     hospitals.forEach((h) => map.set(h.id, h.name));
@@ -29,11 +54,26 @@ export function ReferralsPage() {
   }, [hospitals]);
 
   const filtered = useMemo(() => {
-    if (!user) return [];
+    if (!user || isLoading) return [];
 
     const normalized = search.trim().toLowerCase();
 
-    const allowedReferrals = referrals.filter(
+    // Map API data to frontend format
+    const mappedReferrals = referrals.map((ref: any) => ({
+      id: ref.id,
+      referral_number: ref.referralNumber,
+      patient_id: ref.patientId,
+      patient_name: ref.patient?.name || '',
+      reason: ref.reason,
+      status: ref.status,
+      priority: ref.priority,
+      requesting_hospital_id: ref.requestingHospitalId,
+      receiving_hospital_id: ref.receivingHospitalId,
+      created_at: ref.createdAt,
+      department: ref.department,
+    }));
+
+    const allowedReferrals = mappedReferrals.filter(
       (ref) =>
         ref.requesting_hospital_id === user.hospital_id ||
         ref.receiving_hospital_id === user.hospital_id
@@ -95,7 +135,7 @@ export function ReferralsPage() {
     });
 
     return sorted;
-  }, [referrals, search, hospitalMap, sortBy, sortDirection, statusSort, user]);
+  }, [referrals, search, hospitalMap, sortBy, sortDirection, statusSort, user, isLoading]);
 
   // Pagination logic
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -105,7 +145,7 @@ export function ReferralsPage() {
   // Add index to each item for display
   const dataWithIndex = paginatedData.map((item, index) => ({
     ...item,
-    displayIndex: startIndex + index + 1,
+    displayIndex: (item as any).referral_number || (startIndex + index + 1),
   }));
 
   // Reset to first page when search or sort changes
@@ -280,13 +320,22 @@ export function ReferralsPage() {
           </div>
       </div>
 
-      <Table
+      {isLoading ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+          <p className="text-slate-500">Loading referrals...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+          <p className="text-slate-500">No referrals found. Create your first referral to get started.</p>
+        </div>
+      ) : (
+        <Table
         data={dataWithIndex}
         rowKey={(row) => row.id}
         columns={[
           {
             header: 'Ref #',
-            accessor: (row) => <span className="font-medium text-indigo-600">REF-{row.displayIndex}</span>,
+            accessor: (row) => <span className="font-medium text-indigo-600">REF-{String(row.displayIndex).padStart(4, '0')}</span>,
           },
           {
             header: 'Patient',
@@ -343,7 +392,8 @@ export function ReferralsPage() {
             className: 'text-right',
           },
         ]}
-      />
+        />
+      )}
 
       {/* Pagination Controls */}
       {totalPages > 1 && (

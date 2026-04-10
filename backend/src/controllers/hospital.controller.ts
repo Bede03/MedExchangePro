@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { hospitalService } from '../services/hospital.service';
 import { auditService } from '../services/audit.service';
 import { getClientIp, getUserAgent } from '../utils/helpers';
-import { getHospitalDepartments } from '../utils/departments';
 
 export const createHospital = async (req: Request, res: Response) => {
   try {
@@ -136,20 +135,13 @@ export const deleteHospital = async (req: Request, res: Response) => {
 
 export const getHospitalDepartmentsEndpoint = async (req: Request, res: Response) => {
   try {
-    const departments = getHospitalDepartments(req.params.id);
-
-    if (!departments || departments.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Hospital not found or has no departments',
-      });
-    }
+    const departments = await hospitalService.getHospitalDepartments(req.params.id);
 
     res.json({
       success: true,
       data: {
         hospitalId: req.params.id,
-        departments,
+        departments: departments.map((d: any) => d.category || d.departmentName),
         count: departments.length,
       },
     });
