@@ -49,7 +49,7 @@ export const getSharedRecordsByHospital = async (req: Request, res: Response) =>
     const userAgent = getUserAgent(req);
     await auditService.logAction(
       'Data_Accessed',
-      'PatientRecord',
+      'Patient',
       'multiple',
       req.user!.id,
       ipAddress,
@@ -84,7 +84,7 @@ export const getSharedRecordByReferral = async (req: Request, res: Response) => 
     const userAgent = getUserAgent(req);
     await auditService.logAction(
       'Data_Accessed',
-      'PatientRecord',
+      'Patient',
       sharedRecord.id,
       req.user!.id,
       ipAddress,

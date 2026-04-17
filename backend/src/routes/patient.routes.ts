@@ -14,6 +14,7 @@ router.use(authMiddleware);
 router.post('/', validateRequest(createPatientSchema), patientController.createPatient);
 router.get('/', patientController.getPatientsByHospital);
 router.get('/search', patientController.searchPatients);
+router.get('/:id/combined', patientController.getPatientWithExternalHistory);
 router.get('/:id', patientController.getPatientById);
 router.put('/:id', validateRequest(updatePatientSchema), patientController.updatePatient);
 router.delete('/:id', patientController.deletePatient);

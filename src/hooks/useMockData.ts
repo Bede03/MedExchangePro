@@ -47,7 +47,7 @@ export function useMockData() {
           phone: p.phone,
           address: p.address,
           national_id: p.nationalId,
-          registered_at: p.createdAt,
+          registered_at: p.createdAt ?? p.dob,
           hospital_id: p.hospitalId,
         }));
         setPatients(mappedPatients);

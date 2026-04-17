@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { patientService } from '../services/patient.service';
 import { auditService } from '../services/audit.service';
+import { externalMysqlService } from '../services/external-mysql.service.js';
 import { getClientIp, getUserAgent } from '../utils/helpers';
 
 export const createPatient = async (req: Request, res: Response) => {
@@ -11,7 +12,7 @@ export const createPatient = async (req: Request, res: Response) => {
     const ipAddress = getClientIp(req);
     const userAgent = getUserAgent(req);
     await auditService.logAction(
-      'Patient_Created',
+      'Data_Accessed',
       'Patient',
       patient.id,
       req.user!.id,
@@ -39,6 +40,26 @@ export const getPatientById = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: patient,
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getPatientWithExternalHistory = async (req: Request, res: Response) => {
+  try {
+    const patient = await patientService.getPatientById(req.params.id);
+    const externalHistory = await externalMysqlService.getPatientRecordsByNationalId(patient.nationalId);
+
+    res.json({
+      success: true,
+      data: {
+        patient,
+        externalHistory,
+      },
     });
   } catch (error: any) {
     res.status(error.statusCode || 500).json({
@@ -76,7 +97,7 @@ export const updatePatient = async (req: Request, res: Response) => {
     const ipAddress = getClientIp(req);
     const userAgent = getUserAgent(req);
     await auditService.logAction(
-      'Patient_Updated',
+      'Data_Accessed',
       'Patient',
       req.params.id,
       req.user!.id,
@@ -105,7 +126,7 @@ export const deletePatient = async (req: Request, res: Response) => {
     const ipAddress = getClientIp(req);
     const userAgent = getUserAgent(req);
     await auditService.logAction(
-      'Patient_Updated',
+      'Data_Accessed',
       'Patient',
       req.params.id,
       req.user!.id,

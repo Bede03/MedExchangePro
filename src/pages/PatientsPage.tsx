@@ -8,6 +8,16 @@ import { Table } from '../components/UI/Table';
 type SortOption = 'name' | 'hospital' | 'registered_date';
 type SortDirection = 'asc' | 'desc';
 
+const formatDob = (dob: string) => {
+  const date = new Date(dob);
+  if (Number.isNaN(date.getTime())) return dob;
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
 export function PatientsPage() {
   const { patients, hospitals } = useMockData();
   const { user } = useAuth();
@@ -238,7 +248,10 @@ export function PatientsPage() {
         columns={[
           { header: 'Name', accessor: 'name' },
           { header: 'Gender', accessor: 'gender' },
-          { header: 'DOB', accessor: 'dob' },
+          {
+            header: 'DOB',
+            accessor: (row) => formatDob(row.dob),
+          },
           { header: 'National ID', accessor: 'national_id' },
           {
             header: 'Hospital',
@@ -248,7 +261,7 @@ export function PatientsPage() {
             header: '',
             accessor: (row) => (
               <Link
-                to={`/patients/${row.id}`}
+                to={`/patients/${row.national_id || row.id}`}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
               >
                 <Eye className="h-4 w-4" />

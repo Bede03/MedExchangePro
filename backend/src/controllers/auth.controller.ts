@@ -12,7 +12,7 @@ export const login = async (req: Request, res: Response) => {
     const ipAddress = getClientIp(req);
     const userAgent = getUserAgent(req);
     await auditService.logAction(
-      'Login',
+      'Data_Accessed',
       'User',
       result.user.id,
       result.user.id,

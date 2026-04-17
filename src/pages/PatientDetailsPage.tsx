@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, FileText, HeartPulse, Folder } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
+import { apiClient } from '../services/api';
 import { StatusBadge } from '../components/UI/StatusBadge';
 
 const TABS = ['Demographics', 'Medical History', 'Lab Results', 'Documents'] as const;
@@ -18,17 +19,52 @@ export function PatientDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hospitals, patients, referrals } = useMockData();
+  const { hospitals, referrals, patients } = useMockData();
+  const [patient, setPatient] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [externalHistory, setExternalHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
-  const patient = useMemo(
-    () =>
-      patients.find((p) => p.id === id && p.hospital_id === user?.hospital_id) ?? null,
-    [patients, id, user?.hospital_id]
+  const localPatient = useMemo(
+    () => patients.find((p) => p.id === id) ?? null,
+    [patients, id]
   );
 
+  const normalizedRouteId = useMemo(
+    () => (id ? id.replace(/_/g, '') : ''),
+    [id]
+  );
+
+  useEffect(() => {
+    const loadPatientWithHistory = async () => {
+      if (!id) return;
+      setLoading(true);
+      setHistoryLoading(true);
+      setError(null);
+      setHistoryError(null);
+
+      try {
+        const requestId = localPatient?.national_id ?? normalizedRouteId;
+        const response = await apiClient.patients.getCombined(requestId);
+        setPatient(response.data.patient);
+        setExternalHistory(response.data.externalHistory || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load patient details');
+        setHistoryError(err.message || 'Failed to load medical history');
+      } finally {
+        setLoading(false);
+        setHistoryLoading(false);
+      }
+    };
+
+    loadPatientWithHistory();
+  }, [id, localPatient, normalizedRouteId]);
+
   const hospital = useMemo(
-    () => hospitals.find((h) => h.id === patient?.hospital_id) ?? null,
-    [hospitals, patient?.hospital_id]
+    () => hospitals.find((h) => h.id === patient?.hospitalId) ?? null,
+    [hospitals, patient?.hospitalId]
   );
 
   const patientReferrals = useMemo(
@@ -38,7 +74,7 @@ export function PatientDetailsPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('Demographics');
 
-  if (!patient) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <button
@@ -49,7 +85,23 @@ export function PatientDetailsPage() {
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
-        <p className="text-sm text-slate-500">Patient not found or access denied.</p>
+        <p className="text-sm text-slate-500">Loading patient details…</p>
+      </div>
+    );
+  }
+
+  if (!patient || error) {
+    return (
+      <div className="space-y-6">
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        <p className="text-sm text-slate-500">{error ?? 'Patient not found or access denied.'}</p>
       </div>
     );
   }
@@ -58,7 +110,7 @@ export function PatientDetailsPage() {
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
-    .map((p) => p[0])
+    .map((p: string) => p[0])
     .join('')
     .toUpperCase();
 
@@ -158,15 +210,27 @@ export function PatientDetailsPage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-500">National ID</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">{patient.national_id}</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{patient.nationalId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500">Blood Type</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{patient.bloodType || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-500">Address</p>
                     <p className="mt-1 text-sm font-medium text-slate-900">{patient.address}</p>
                   </div>
                   <div>
+                    <p className="text-xs font-semibold text-slate-500">Insurance Scheme</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{patient.insurance?.scheme ?? 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500">Member Number</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{patient.insurance?.memberNumber ?? 'N/A'}</p>
+                  </div>
+                  <div>
                     <p className="text-xs font-semibold text-slate-500">Registered</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">{formatDate(patient.registered_at)}</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{formatDate(patient.registeredAt ?? patient.dob)}</p>
                   </div>
                 </div>
               </div>
@@ -174,16 +238,85 @@ export function PatientDetailsPage() {
           )}
 
           {activeTab === 'Medical History' && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
-              <p className="text-sm font-medium text-slate-700">No medical history recorded.</p>
-              <p className="mt-2 text-sm text-slate-500">You can capture history via referrals or notes.</p>
+            <div className="space-y-6">
+              {historyLoading ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
+                  <p className="text-sm font-medium text-slate-700">Loading medical history…</p>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Medical history</h3>
+                    <div className="mt-5 space-y-6">
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medication history</h4>
+                        {patient.medications && patient.medications.length > 0 ? (
+                          <div className="mt-3 space-y-4">
+                            {patient.medications.map((med: any) => (
+                              <div key={med.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-sm font-semibold text-slate-900">{med.medicationName}</p>
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    {med.durationDays
+                                      ? `${med.durationDays} ${med.durationDays === 1 ? 'day' : 'days'}`
+                                      : 'Ongoing'}
+                                  </p>
+                                </div>
+                                <p className="mt-2 text-sm text-slate-700">Dose: {med.dose || 'N/A'}</p>
+                                <p className="mt-1 text-sm text-slate-700">Frequency: {med.frequency || 'N/A'}</p>
+                                <p className="mt-1 text-sm text-slate-700">Prescribed by: {med.prescribedBy ?? 'Unknown'}</p>
+                                <p className="mt-1 text-sm text-slate-700">Diagnosis: {med.diagnosis || 'N/A'}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-6">
+                            <p className="text-sm font-medium text-slate-700">No medication history found.</p>
+                            <p className="mt-2 text-sm text-slate-500">Medication records will appear here when available.</p>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {activeTab === 'Lab Results' && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
-              <p className="text-sm font-medium text-slate-700">No lab results available.</p>
-              <p className="mt-2 text-sm text-slate-500">Upload lab reports to keep this section updated.</p>
+            <div className="space-y-4">
+              {patient.labResults && patient.labResults.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Test</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Result</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Reference</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flag</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {patient.labResults.map((lab: any) => (
+                        <tr key={lab.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-sm text-slate-700">{lab.parameter}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{lab.value} {lab.unit}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{lab.refRange || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{lab.flag || 'Pending'}</td>
+                          <td className="px-4 py-3 text-right text-sm text-slate-700">{lab.resultedAt ? formatDate(lab.resultedAt) : 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
+                  <p className="text-sm font-medium text-slate-700">No lab results available.</p>
+                  <p className="mt-2 text-sm text-slate-500">Upload lab reports to keep this section updated.</p>
+                </div>
+              )}
             </div>
           )}
 

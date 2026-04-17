@@ -63,6 +63,7 @@ export function ReferralsPage() {
       id: ref.id,
       referral_number: ref.referralNumber,
       patient_id: ref.patientId,
+      patient_national_id: ref.patient?.nationalId,
       patient_name: ref.patient?.name || '',
       reason: ref.reason,
       status: ref.status,
@@ -340,7 +341,10 @@ export function ReferralsPage() {
           {
             header: 'Patient',
             accessor: (row) => (
-              <Link to={`/patients/${row.patient_id}`} className="font-medium text-indigo-600 hover:text-indigo-800">
+              <Link
+                to={`/patients/${row.patient_national_id || row.patient_id}`}
+                className="font-medium text-indigo-600 hover:text-indigo-800"
+              >
                 {row.patient_name}
               </Link>
             ),

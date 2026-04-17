@@ -13,6 +13,7 @@ import patientRecordsRoutes from './routes/patient-records.routes.js';
 import hospitalRoutes from './routes/hospital.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import externalMysqlRoutes from './routes/external-mysql.routes.js';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ app.use('/api/patient-records', patientRecordsRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/external-mysql', externalMysqlRoutes);
 
 // 404 handler
 app.use((req, res) => {

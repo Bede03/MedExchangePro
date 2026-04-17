@@ -1,5 +1,5 @@
 // API Service for backend communication
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const apiClient = {
   // Get token from localStorage
@@ -95,6 +95,15 @@ export const apiClient = {
       });
 
       if (!response.ok) throw new Error('Failed to fetch patient');
+      return response.json();
+    },
+
+    getCombined: async (id: string) => {
+      const response = await fetch(`${API_URL}/api/patients/${id}/combined`, {
+        headers: apiClient.getHeaders(true),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch combined patient data');
       return response.json();
     },
 

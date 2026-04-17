@@ -9,7 +9,7 @@ export function Footer() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4 mb-6">
           <div>
-            <h3 className="text-sm font-semibold text-white">MedExchangePro</h3>
+            <h3 className="text-sm font-semibold text-white">MedExchange</h3>
             <p className="mt-2 text-xs text-slate-400">
               Healthcare referral management system designed to streamline patient care coordination.
             </p>
