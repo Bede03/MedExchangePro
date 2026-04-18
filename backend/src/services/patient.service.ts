@@ -88,11 +88,54 @@ const normalizeChukPatient = (row: ChukPatientRow, hospitalId: string, hospitalN
 };
 
 export class PatientService {
-  private async findChukHospitalId() {
+  async findChukHospitalId() {
     const hospital = await prisma.hospital.findFirst({
       where: { name: 'CHUK' },
     });
     return hospital?.id ?? 'chuk';
+  }
+
+  async getOrCreateLocalPatientFromIdentifier(identifier: string, hospitalId: string) {
+    const localPatient = await prisma.patient.findUnique({
+      where: { id: identifier },
+    });
+    if (localPatient) return localPatient;
+
+    const chukRow = await this.getChukPatientByIdentifier(identifier);
+    if (!chukRow) {
+      throw new AppError(404, 'Patient not found');
+    }
+
+    const nationalId = String(chukRow.national_id ?? '').trim();
+    if (!nationalId) {
+      throw new AppError(400, 'CHUK patient is missing a national ID');
+    }
+
+    const existingByNational = await prisma.patient.findUnique({
+      where: { nationalId },
+    });
+    if (existingByNational) return existingByNational;
+
+    const firstName = String(chukRow.first_name ?? '').trim();
+    const lastName = String(chukRow.last_name ?? '').trim();
+    const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown Patient';
+    const gender = ['male', 'female', 'other'].includes(String(chukRow.gender ?? '').toLowerCase())
+      ? String(chukRow.gender).toLowerCase()
+      : 'other';
+
+    const patient = await prisma.patient.create({
+      data: {
+        name,
+        gender: gender as any,
+        dob: String(chukRow.dob ?? ''),
+        phone: String(chukRow.phone ?? ''),
+        address: String(chukRow.address ?? ''),
+        nationalId,
+        hospitalId,
+      },
+    });
+
+    return patient;
   }
 
   async createPatient(data: any, hospitalId: string) {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,18 @@ import { useMockData } from '../hooks/useMockData';
 import { getDepartmentsForHospital, hospitalHasDepartment } from '../data/departments';
 
 const priorities = ['Emergency', 'Urgent', 'Routine'] as const;
+const referralReasons = [
+  'Acute pain',
+  'Chronic condition management',
+  'Diagnostic imaging',
+  'Specialist consultation',
+  'Surgical evaluation',
+  'Medication review',
+  'Lab tests',
+  'Rehabilitation needs',
+  'Mental health assessment',
+  'Other',
+] as const;
 
 export function NewReferralPage() {
   const navigate = useNavigate();
@@ -23,13 +35,14 @@ export function NewReferralPage() {
     [patientsForHospital, patientId]
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!patientId && patientsForHospital.length > 0) {
       setPatientId(patientsForHospital[0].id);
     }
   }, [patientId, patientsForHospital]);
 
-  const [reason, setReason] = useState('');
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+  const [reasonDetails, setReasonDetails] = useState('');
   const [priority, setPriority] = useState<typeof priorities[number]>('Emergency');
   const [department, setDepartment] = useState('');
   const [departmentError, setDepartmentError] = useState<string | null>(null);
@@ -49,7 +62,7 @@ export function NewReferralPage() {
   }, [hospitals, requestingHospitalId]);
 
   // Initialize receiving hospital selection when hospitals data is ready
-  React.useEffect(() => {
+  useEffect(() => {
     if (receivingHospitals.length > 0) {
       setReceivingHospitalId((prev) => {
         if (prev && receivingHospitals.some((h) => h.id === prev)) {
@@ -102,8 +115,13 @@ export function NewReferralPage() {
       return;
     }
 
-    if (!reason.trim()) {
-      setError('Reason for referral is required.');
+    if (selectedReasons.length === 0) {
+      setError('Please select at least one reason for referral.');
+      return;
+    }
+
+    if (selectedReasons.includes('Other') && !reasonDetails.trim()) {
+      setError('Please provide details for the selected Other reason.');
       return;
     }
 
@@ -114,7 +132,7 @@ export function NewReferralPage() {
 
     // Validate selected department is shared by both hospitals
     if (
-      !hospitalHasDepartment(receivingHospitalId, department, hospitals.find(h => h.id === receivingHospitalId)?.name) ||
+      !hospitalHasDepartment(receivingHospitalId, department, hospitals.find((h) => h.id === receivingHospitalId)?.name) ||
       !hospitalHasDepartment(requestingHospitalId, department, requestingHospitalName)
     ) {
       setDepartmentError(`${department} is not available for shared referral between selected hospitals.`);
@@ -134,7 +152,8 @@ export function NewReferralPage() {
       await addReferral({
         patient_id: patientId,
         patient_name: patient?.name ?? 'Unknown',
-        reason: reason.trim(),
+        reason: selectedReasons,
+        reasonDetails: reasonDetails.trim(),
         status: 'pending',
         priority,
         department,
@@ -247,36 +266,60 @@ export function NewReferralPage() {
                 disabled={availableDepartments.length === 0}
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">
-                  {availableDepartments.length === 0 ? 'No departments available' : 'Select department'}
-                </option>
-                {availableDepartments.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
+                <option value="">Select department</option>
+                {availableDepartments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
                   </option>
                 ))}
               </select>
-              {departmentError && (
-                <div className="mt-2 flex items-center gap-2 rounded-lg bg-red-50 p-3 border border-red-200">
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                  <p className="text-sm text-red-700">{departmentError}</p>
+              {departmentError ? (
+                <div className="mt-2 flex items-center gap-2 text-sm text-red-700">
+                  <AlertCircle className="h-4 w-4" />
+                  <p>{departmentError}</p>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-sm font-medium text-slate-700" htmlFor="reason">
-                Reason for Referral *
-              </label>
-              <textarea
-                id="reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={4}
-                placeholder="Describe reason for referral..."
-                className="mt-1 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              />
+              <p className="text-sm font-medium text-slate-700">Reason(s) for Referral *</p>
+              <div className="mt-3 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                {referralReasons.map((reasonOption) => (
+                  <label key={reasonOption} className="inline-flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 hover:border-indigo-300">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={selectedReasons.includes(reasonOption)}
+                      onChange={() => {
+                        setSelectedReasons((prev) =>
+                          prev.includes(reasonOption)
+                            ? prev.filter((reason) => reason !== reasonOption)
+                            : [...prev, reasonOption]
+                        );
+                        setError(null);
+                      }}
+                    />
+                    <span>{reasonOption}</span>
+                  </label>
+                ))}
+              </div>
             </div>
+
+            {selectedReasons.includes('Other') && (
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-slate-700" htmlFor="reasonDetails">
+                  Other reason details *
+                </label>
+                <textarea
+                  id="reasonDetails"
+                  value={reasonDetails}
+                  onChange={(e) => setReasonDetails(e.target.value)}
+                  rows={3}
+                  placeholder="Please specify the other reason..."
+                  className="mt-1 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            )}
 
             <div className="md:col-span-2">
               <label className="text-sm font-medium text-slate-700" htmlFor="notes">

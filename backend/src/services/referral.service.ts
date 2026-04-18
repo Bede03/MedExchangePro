@@ -3,18 +3,27 @@ import { AppError } from '../utils/errors';
 import { JwtPayload } from '../utils/jwt';
 import { validateReferralDepartment, hospitalHasDepartment } from '../utils/departments';
 import { notificationService } from './notification.service';
+import { patientService } from './patient.service';
 
 const prisma = new PrismaClient();
 
 export class ReferralService {
   async createReferral(data: any, currentUser: JwtPayload) {
-    // Verify patient exists and belongs to requesting hospital
-    const patient = await prisma.patient.findUnique({
+    // Verify patient exists locally or resolve a CHUK patient ID into a local record
+    let patient = await prisma.patient.findUnique({
       where: { id: data.patientId },
     });
 
     if (!patient) {
-      throw new AppError(404, 'Patient not found');
+      const chukHospitalId = await patientService.findChukHospitalId();
+      if (currentUser.hospitalId !== chukHospitalId && currentUser.role !== 'admin') {
+        throw new AppError(404, 'Patient not found');
+      }
+
+      patient = await patientService.getOrCreateLocalPatientFromIdentifier(
+        data.patientId,
+        currentUser.hospitalId
+      );
     }
 
     if (patient.hospitalId !== currentUser.hospitalId && currentUser.role !== 'admin') {
@@ -47,11 +56,18 @@ export class ReferralService {
     });
     const nextReferralNumber = (lastReferral?.referralNumber || 0) + 1;
 
+    const storedReason = Array.isArray(data.reason)
+      ? data.reason.join('; ')
+      : data.reason;
+    const reasonText = data.reasonDetails
+      ? `${storedReason} - ${data.reasonDetails}`
+      : storedReason;
+
     const referral = await prisma.referral.create({
       data: {
         referralNumber: nextReferralNumber,
-        patientId: data.patientId,
-        reason: data.reason,
+        patientId: patient.id,
+        reason: reasonText,
         priority: data.priority,
         department: deptValidation.department as string,
         requestingHospitalId: currentUser.hospitalId,

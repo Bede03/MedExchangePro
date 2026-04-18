@@ -101,7 +101,8 @@ export function useMockData() {
     try {
       const response = await apiClient.referrals.create({
         patientId: referral.patient_id,
-        reason: referral.reason,
+        reason: Array.isArray(referral.reason) ? referral.reason.join('; ') : referral.reason,
+        reasonDetails: referral.reasonDetails,
         priority: referral.priority,
         receivingHospitalId: referral.receiving_hospital_id,
         department: referral.department,

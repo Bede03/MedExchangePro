@@ -186,6 +186,20 @@ export function ReferralDetailsPage() {
     return events;
   }, [referral]);
 
+  // Parse referral reasons from stored string format
+  const parsedReasons = useMemo(() => {
+    if (!referral?.reason) return { reasons: [], details: null };
+
+    const parts = referral.reason.split(' - ');
+    const reasonString = parts[0];
+    const details = parts[1] || null;
+
+    // Split reasons by '; ' and filter out empty strings
+    const reasons = reasonString.split('; ').filter(r => r.trim());
+
+    return { reasons, details };
+  }, [referral?.reason]);
+
   // Now check loading state and render conditionally
   if (isLoading) {
     return (
@@ -418,7 +432,26 @@ export function ReferralDetailsPage() {
 
         <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
           <p className="text-sm font-semibold text-slate-700">Reason for Referral</p>
-          <p className="mt-2 text-sm text-slate-900">{referral.reason}</p>
+          <div className="mt-2 space-y-3">
+            {parsedReasons.reasons.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {parsedReasons.reasons.map((reason, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-800"
+                  >
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            )}
+            {parsedReasons.details && (
+              <div className="rounded-md bg-white p-3 border border-slate-200">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Additional Details</p>
+                <p className="mt-1 text-sm text-slate-900">{parsedReasons.details}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Authorization Message & Action Buttons */}

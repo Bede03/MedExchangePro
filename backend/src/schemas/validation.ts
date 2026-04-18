@@ -71,7 +71,13 @@ const DEPARTMENTS = [
 // Referral Schemas
 export const createReferralSchema = z.object({
   patientId: z.string().min(1, 'Patient ID is required'),
-  reason: z.string().min(10, 'Reason must be at least 10 characters').max(500, 'Reason cannot exceed 500 characters'),
+  reason: z
+    .union([
+      z.array(z.string().min(1)).min(1),
+      z.string().min(10, 'Reason must be at least 10 characters'),
+    ])
+    .transform((value) => (Array.isArray(value) ? value : [value])),
+  reasonDetails: z.string().max(500, 'Reason details cannot exceed 500 characters').optional(),
   priority: z.enum(['Emergency', 'Urgent', 'Routine']),
   department: z.enum(DEPARTMENTS as any, {
     errorMap: () => ({ message: `Department must be one of: ${DEPARTMENTS.join(', ')}` }),

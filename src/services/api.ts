@@ -176,7 +176,20 @@ export const apiClient = {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) throw new Error('Failed to create referral');
+      if (!response.ok) {
+        let message = 'Failed to create referral';
+        try {
+          const errorBody = await response.json();
+          if (errorBody?.message) message = `${message}: ${errorBody.message}`;
+          if (errorBody?.errors) {
+            const details = errorBody.errors.map((err: any) => `${err.field}: ${err.message}`).join('; ');
+            if (details) message += ` (${details})`;
+          }
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(message);
+      }
       return response.json();
     },
 
