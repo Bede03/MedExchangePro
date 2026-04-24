@@ -103,8 +103,12 @@ CREATE TABLE staff (
     first_name VARCHAR2(100),
     last_name VARCHAR2(100),
     role VARCHAR2(50),
+    gender VARCHAR2(10),
+    dob DATE,
     dept_id NUMBER REFERENCES departments(dept_id),
     license_number VARCHAR2(50),
+    email VARCHAR2(100),
+    phone VARCHAR2(20),
     nationality VARCHAR2(50),
     hire_date DATE
 );

@@ -2,6 +2,23 @@
 -- This script adds sample rows to the KFH schema and creates sequences for auto-incrementing IDs.
 -- Run this after kfh_oracle_schema.sql in the same schema.
 
+-- Disable substitution variables to prevent & prompts
+SET DEFINE OFF;
+
+-- Clear existing data in reverse dependency order (for clean reload)
+DELETE FROM encounters;
+DELETE FROM diagnoses;
+DELETE FROM referrals;
+DELETE FROM visits;
+DELETE FROM beds;
+DELETE FROM wards;
+DELETE FROM departments;
+DELETE FROM staff;
+DELETE FROM addresses;
+DELETE FROM next_of_kin;
+DELETE FROM patient_insurance;
+DELETE FROM patients;
+
 -- Sequences for primary key auto-increment
 CREATE SEQUENCE seq_patients START WITH 21 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE seq_patient_insurance START WITH 21 INCREMENT BY 1 NOCACHE NOCYCLE;
@@ -149,27 +166,98 @@ INTO addresses VALUES (19,19,'Nyamagabe','Butare','Rwanda')
 INTO addresses VALUES (20,20,'Kirehe','Kigina','Rwanda')
 SELECT * FROM dual;
 
+-- Departments (must be inserted before visits due to FK)
+INSERT ALL
+INTO departments VALUES (1,'General Surgery','Clinical',NULL)
+INTO departments VALUES (2,'Orthopedic Surgery','Clinical',NULL)
+INTO departments VALUES (3,'Neurosurgery','Clinical',NULL)
+INTO departments VALUES (4,'Urology','Clinical',NULL)
+INTO departments VALUES (5,'Cardiology','Clinical',NULL)
+INTO departments VALUES (6,'Internal Medicine','Clinical',NULL)
+INTO departments VALUES (7,'Nephrology','Clinical',NULL)
+INTO departments VALUES (8,'Endocrinology','Clinical',NULL)
+INTO departments VALUES (9,'Pulmonology','Clinical',NULL)
+INTO departments VALUES (10,'Oncology','Clinical',NULL)
+INTO departments VALUES (11,'Pediatrics','Clinical',NULL)
+INTO departments VALUES (12,'NICU/Neonatology','Clinical',NULL)
+INTO departments VALUES (13,'Gynecology & Obstetrics','Clinical',NULL)
+INTO departments VALUES (14,'Maternal-Fetal Medicine','Clinical',NULL)
+INTO departments VALUES (15,'Emergency Medicine','Clinical',NULL)
+INTO departments VALUES (16,'Anesthesiology','Clinical',NULL)
+INTO departments VALUES (17,'ENT','Clinical',NULL)
+INTO departments VALUES (18,'Ophthalmology','Clinical',NULL)
+INTO departments VALUES (19,'Dentistry/Oral & Maxillofacial','Clinical',NULL)
+INTO departments VALUES (20,'Radiology','Support',NULL)
+INTO departments VALUES (21,'Laboratory Services','Support',NULL)
+INTO departments VALUES (22,'Dermatology','Clinical',NULL)
+INTO departments VALUES (23,'Cardio-thoracic Surgery','Clinical',NULL)
+INTO departments VALUES (24,'Interventional Cardiology','Clinical',NULL)
+INTO departments VALUES (25,'Digestive/GI Surgery','Clinical',NULL)
+INTO departments VALUES (26,'Hepatobiliary Surgery','Clinical',NULL)
+INTO departments VALUES (27,'Gastroenterology','Clinical',NULL)
+INTO departments VALUES (28,'Haematology','Clinical',NULL)
+INTO departments VALUES (29,'Pathology','Support',NULL)
+SELECT * FROM dual;
+
+-- Wards (must be inserted before beds due to FK)
+INSERT ALL
+INTO wards VALUES (1,1,'Surgery Ward',1,20,'General')
+INTO wards VALUES (2,2,'Orthopedic Ward',1,15,'Private')
+INTO wards VALUES (3,3,'Neurosurgery Ward',2,20,'General')
+INTO wards VALUES (4,4,'Urology Ward',2,18,'Private')
+INTO wards VALUES (5,5,'Cardiology Ward',3,25,'General')
+INTO wards VALUES (6,6,'Internal Medicine Ward',3,12,'Private')
+INTO wards VALUES (7,7,'Emergency Ward',1,30,'General')
+INTO wards VALUES (8,8,'Pediatrics Ward',2,20,'Private')
+INTO wards VALUES (9,9,'NICU Ward',3,15,'ICU')
+INTO wards VALUES (10,10,'Maternity Ward',1,18,'Private')
+INTO wards VALUES (11,11,'Gynecology Ward',2,20,'General')
+INTO wards VALUES (12,12,'Radiology Ward',1,10,'Support')
+INTO wards VALUES (13,13,'Laboratory Ward',2,10,'Support')
+INTO wards VALUES (14,14,'Oncology Ward',3,15,'Private')
+INTO wards VALUES (15,15,'ICU Ward',1,10,'ICU')
+SELECT * FROM dual;
+
+-- Beds (must be inserted before visits due to FK)
+INSERT ALL
+INTO beds VALUES (1,1,'B001','Regular','Available')
+INTO beds VALUES (2,2,'B002','ICU','Occupied')
+INTO beds VALUES (3,3,'B003','Regular','Available')
+INTO beds VALUES (4,4,'B004','ICU','Occupied')
+INTO beds VALUES (5,5,'B005','Regular','Available')
+INTO beds VALUES (6,6,'B006','ICU','Occupied')
+INTO beds VALUES (7,7,'B007','Regular','Available')
+INTO beds VALUES (8,8,'B008','ICU','Occupied')
+INTO beds VALUES (9,9,'B009','Regular','Available')
+INTO beds VALUES (10,10,'B010','ICU','Occupied')
+INTO beds VALUES (11,11,'B011','Regular','Available')
+INTO beds VALUES (12,12,'B012','Regular','Available')
+INTO beds VALUES (13,13,'B013','Regular','Available')
+INTO beds VALUES (14,14,'B014','Regular','Available')
+INTO beds VALUES (15,15,'B015','ICU','Occupied')
+SELECT * FROM dual;
+
 INSERT ALL
 INTO visits VALUES (1,1,'Inpatient',1,2,TIMESTAMP '2024-01-10 09:30:00',TIMESTAMP '2024-01-15 10:00:00',1,'Private','QT-001')
-INTO visits VALUES (2,2,'Outpatient',3,4,TIMESTAMP '2024-02-08 14:00:00',NULL,NULL,'QT-002')
-INTO visits VALUES (3,3,'Emergency',7,1,TIMESTAMP '2024-03-02 02:20:00',TIMESTAMP '2024-03-04 11:00:00',2,'General','QT-003')
-INTO visits VALUES (4,4,'Inpatient',8,3,TIMESTAMP '2024-03-20 16:10:00',TIMESTAMP '2024-03-25 09:45:00',3,'Deluxe','QT-004')
-INTO visits VALUES (5,5,'Outpatient',5,5,TIMESTAMP '2024-04-05 10:40:00',NULL,NULL,'QT-005')
-INTO visits VALUES (6,6,'Inpatient',2,2,TIMESTAMP '2024-04-12 08:15:00',TIMESTAMP '2024-04-18 12:30:00',4,'Standard','QT-006')
-INTO visits VALUES (7,7,'Emergency',7,1,TIMESTAMP '2024-05-01 23:55:00',TIMESTAMP '2024-05-02 07:20:00',5,'General','QT-007')
-INTO visits VALUES (8,8,'Outpatient',11,4,TIMESTAMP '2024-05-10 13:20:00',NULL,NULL,'QT-008')
-INTO visits VALUES (9,9,'Outpatient',4,3,TIMESTAMP '2024-05-18 07:20:00',NULL,NULL,'QT-009')
+INTO visits VALUES (2,2,'Outpatient',11,4,TIMESTAMP '2024-02-08 14:00:00',NULL,NULL,NULL,'QT-002')
+INTO visits VALUES (3,3,'Emergency',15,1,TIMESTAMP '2024-03-02 02:20:00',TIMESTAMP '2024-03-04 11:00:00',2,'General','QT-003')
+INTO visits VALUES (4,4,'Inpatient',13,3,TIMESTAMP '2024-03-20 16:10:00',TIMESTAMP '2024-03-25 09:45:00',3,'Deluxe','QT-004')
+INTO visits VALUES (5,5,'Outpatient',6,5,TIMESTAMP '2024-04-05 10:40:00',NULL,NULL,NULL,'QT-005')
+INTO visits VALUES (6,6,'Inpatient',1,2,TIMESTAMP '2024-04-12 08:15:00',TIMESTAMP '2024-04-18 12:30:00',4,'Standard','QT-006')
+INTO visits VALUES (7,7,'Emergency',15,1,TIMESTAMP '2024-05-01 23:55:00',TIMESTAMP '2024-05-02 07:20:00',5,'General','QT-007')
+INTO visits VALUES (8,8,'Outpatient',11,4,TIMESTAMP '2024-05-10 13:20:00',NULL,NULL,NULL,'QT-008')
+INTO visits VALUES (9,9,'Outpatient',4,3,TIMESTAMP '2024-05-18 07:20:00',NULL,NULL,NULL,'QT-009')
 INTO visits VALUES (10,10,'Inpatient',1,2,TIMESTAMP '2024-06-02 10:20:00',TIMESTAMP '2024-06-09 10:00:00',6,'Private','QT-010')
-INTO visits VALUES (11,11,'Outpatient',6,3,TIMESTAMP '2024-06-12 08:45:00',NULL,NULL,'QT-011')
+INTO visits VALUES (11,11,'Outpatient',6,3,TIMESTAMP '2024-06-12 08:45:00',NULL,NULL,NULL,'QT-011')
 INTO visits VALUES (12,12,'Inpatient',2,4,TIMESTAMP '2024-06-20 09:30:00',TIMESTAMP '2024-06-22 15:00:00',7,'Standard','QT-012')
-INTO visits VALUES (13,13,'Outpatient',5,5,TIMESTAMP '2024-07-02 11:10:00',NULL,NULL,'QT-013')
-INTO visits VALUES (14,14,'Outpatient',8,4,TIMESTAMP '2024-07-15 14:50:00',NULL,NULL,'QT-014')
-INTO visits VALUES (15,15,'Inpatient',9,2,TIMESTAMP '2024-08-01 10:00:00',TIMESTAMP '2024-08-06 08:30:00',8,'Deluxe','QT-015')
-INTO visits VALUES (16,16,'Outpatient',3,4,TIMESTAMP '2024-08-19 09:00:00',NULL,NULL,'QT-016')
+INTO visits VALUES (13,13,'Outpatient',5,5,TIMESTAMP '2024-07-02 11:10:00',NULL,NULL,NULL,'QT-013')
+INTO visits VALUES (14,14,'Outpatient',11,4,TIMESTAMP '2024-07-15 14:50:00',NULL,NULL,NULL,'QT-014')
+INTO visits VALUES (15,15,'Inpatient',10,2,TIMESTAMP '2024-08-01 10:00:00',TIMESTAMP '2024-08-06 08:30:00',8,'Deluxe','QT-015')
+INTO visits VALUES (16,16,'Outpatient',17,4,TIMESTAMP '2024-08-19 09:00:00',NULL,NULL,NULL,'QT-016')
 INTO visits VALUES (17,17,'Inpatient',7,1,TIMESTAMP '2024-09-05 07:30:00',TIMESTAMP '2024-09-10 09:45:00',9,'General','QT-017')
-INTO visits VALUES (18,18,'Outpatient',5,3,TIMESTAMP '2024-09-20 16:10:00',NULL,NULL,'QT-018')
-INTO visits VALUES (19,19,'Outpatient',4,5,TIMESTAMP '2024-10-03 12:25:00',NULL,NULL,'QT-019')
-INTO visits VALUES (20,20,'Inpatient',2,2,TIMESTAMP '2024-10-15 11:45:00',TIMESTAMP '2024-10-18 14:10:00',10,'Standard','QT-020')
+INTO visits VALUES (18,18,'Outpatient',11,3,TIMESTAMP '2024-09-20 16:10:00',NULL,NULL,NULL,'QT-018')
+INTO visits VALUES (19,19,'Outpatient',22,5,TIMESTAMP '2024-10-03 12:25:00',NULL,NULL,NULL,'QT-019')
+INTO visits VALUES (20,20,'Inpatient',1,2,TIMESTAMP '2024-10-15 11:45:00',TIMESTAMP '2024-10-18 14:10:00',10,'Standard','QT-020')
 SELECT * FROM dual;
 
 INSERT ALL
@@ -193,6 +281,29 @@ INTO referrals VALUES (17,17,'Karongi Clinic','Rwanda','Renal care referral','Hi
 INTO referrals VALUES (18,18,'Mageragere Health Center','Rwanda','Radiology opinion','Medium',DATE '2024-09-19',TIMESTAMP '2024-09-19 13:00:00')
 INTO referrals VALUES (19,19,'Kabarondo Hospital','Rwanda','Dermatology follow-up','Low',DATE '2024-10-02',TIMESTAMP '2024-10-02 10:20:00')
 INTO referrals VALUES (20,20,'Huye Hospital','Rwanda','Nutrition referral','Low',DATE '2024-10-14',TIMESTAMP '2024-10-14 14:10:00')
+SELECT * FROM dual;
+
+-- Staff (must be inserted before encounters due to FK)
+INSERT ALL
+INTO staff VALUES (1,'Dr. Jean','Murekatete','Cardiologist','M',DATE '1975-03-15',1,'MD-RWA-2024-001','jmurekatete@kfh.rw','0788111222','Rwanda',DATE '2010-01-01')
+INTO staff VALUES (2,'Dr. Aline','Mukamana','Pediatrician','F',DATE '1980-07-22',11,'MD-RWA-2024-002','amukamana@kfh.rw','0788333444','Rwanda',DATE '2012-01-01')
+INTO staff VALUES (4,'Dr. Emmanuel','Niyongabo','Pulmonologist','M',DATE '1978-11-10',9,'MD-RWA-2024-003','eniyongabo@kfh.rw','0788555666','Rwanda',DATE '2011-01-01')
+INTO staff VALUES (5,'Dr. Jeanne','Mukankusi','Dermatologist','F',DATE '1982-05-18',22,'MD-RWA-2024-004','jmukankusi@kfh.rw','0788777888','Rwanda',DATE '2013-01-01')
+INTO staff VALUES (6,'Dr. Olivier','Bizimana','General Surgeon','M',DATE '1976-09-25',1,'MD-RWA-2024-005','obizimana@kfh.rw','0788999000','Rwanda',DATE '2009-01-01')
+INTO staff VALUES (7,'Dr. Claire','Ishimwe','Nephrologist','F',DATE '1981-01-30',7,'MD-RWA-2024-006','cishimwe@kfh.rw','0788222111','Rwanda',DATE '2014-01-01')
+INTO staff VALUES (8,'Dr. Innocent','Rusesabagina','Gastroenterologist','M',DATE '1979-12-05',27,'MD-RWA-2024-007','irusesabagina@kfh.rw','0788444333','Rwanda',DATE '2010-01-01')
+INTO staff VALUES (9,'Dr. Nadine','Mukantabana','Oncologist','F',DATE '1983-08-14',10,'MD-RWA-2024-008','nmukantabana@kfh.rw','0788666555','Rwanda',DATE '2015-01-01')
+INTO staff VALUES (10,'Dr. Eric','Ndoli','Orthopedic Surgeon','M',DATE '1977-06-15',2,'MD-RWA-2024-009','endoli@kfh.rw','0788888777','Rwanda',DATE '2011-01-01')
+INTO staff VALUES (11,'Dr. Sophie','Imani','Cardiologist','F',DATE '1985-03-20',5,'MD-RWA-2024-010','simani@kfh.rw','0788999888','Rwanda',DATE '2016-01-01')
+INTO staff VALUES (12,'Dr. Bertrand','Kamanzi','Neurologist','M',DATE '1982-09-12',3,'MD-RWA-2024-011','bkamanzi@kfh.rw','0788000222','Rwanda',DATE '2012-01-01')
+INTO staff VALUES (13,'Dr. Suzan','Bizimana','Pediatrician','F',DATE '1988-04-25',11,'MD-RWA-2024-012','sbizimana@kfh.rw','0788111333','Rwanda',DATE '2017-01-01')
+INTO staff VALUES (14,'Dr. Paul','Ngabo','Urologist','M',DATE '1980-11-30',4,'MD-RWA-2024-013','pngabo@kfh.rw','0788222444','Rwanda',DATE '2013-01-01')
+INTO staff VALUES (15,'Dr. Felix','Nyirahabimana','Emergency Physician','M',DATE '1977-04-20',15,'MD-RWA-2024-014','fnyirahabimana@kfh.rw','0788000111','Rwanda',DATE '2008-01-01')
+INTO staff VALUES (16,'Dr. Sandrine','Uwimana','Ophthalmologist','F',DATE '1984-06-12',18,'MD-RWA-2024-015','suwimana@kfh.rw','0788222333','Rwanda',DATE '2014-01-01')
+INTO staff VALUES (17,'Dr. Ariane','Kagabo','Dermatologist','F',DATE '1986-07-18',22,'MD-RWA-2024-016','akagabo@kfh.rw','0788333444','Rwanda',DATE '2018-01-01')
+INTO staff VALUES (18,'Dr. Pascaline','Mukanwankiza','Radiologist','F',DATE '1980-10-08',20,'MD-RWA-2024-017','pmukanwankiza@kfh.rw','0788444555','Rwanda',DATE '2011-01-01')
+INTO staff VALUES (19,'Dr. Jean','Uwera','Gastroenterologist','M',DATE '1983-12-05',27,'MD-RWA-2024-018','juwera@kfh.rw','0788555666','Rwanda',DATE '2015-01-01')
+INTO staff VALUES (20,'Dr. Nadine','Mukantabana','Oncologist','F',DATE '1985-02-14',10,'MD-RWA-2024-019','nmukantabana2@kfh.rw','0788666777','Rwanda',DATE '2019-01-01')
 SELECT * FROM dual;
 
 INSERT ALL
