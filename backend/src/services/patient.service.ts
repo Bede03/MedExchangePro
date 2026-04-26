@@ -3,8 +3,10 @@ import { RowDataPacket } from 'mysql2';
 import pool from '../db/mysqlClient.js';
 import { AppError } from '../utils/errors';
 import { JwtPayload } from '../utils/jwt';
+import { KFHOracleService } from './kfh-oracle.service.js';
 
 const prisma = new PrismaClient();
+const kfhOracleService = new KFHOracleService();
 
 interface ChukPatientRow extends RowDataPacket {
   patient_id?: number;
@@ -87,12 +89,40 @@ const normalizeChukPatient = (row: ChukPatientRow, hospitalId: string, hospitalN
   };
 };
 
+const normalizeKFHPatient = (row: any, hospitalId: string, hospitalName = 'King Faisal Hospital') => {
+  const firstName = String(row.FIRST_NAME ?? '');
+  const lastName = String(row.LAST_NAME ?? '');
+  return {
+    id: String(row.PATIENT_ID ?? ''),
+    name: [firstName, lastName].filter(Boolean).join(' '),
+    gender: String(row.GENDER ?? 'other'),
+    dob: row.DOB ? String(row.DOB) : '',
+    phone: String(row.PHONE ?? ''),
+    address: String(row.ADDRESS ?? ''),
+    nationalId: String(row.NATIONAL_ID ?? ''),
+    bloodType: String(row.BLOOD_TYPE ?? ''),
+    insuranceId: row.INSURANCE_ID ?? null,
+    hospitalId,
+    hospital: {
+      id: hospitalId,
+      name: hospitalName,
+    },
+  };
+};
+
 export class PatientService {
   async findChukHospitalId() {
     const hospital = await prisma.hospital.findFirst({
       where: { name: 'CHUK' },
     });
     return hospital?.id ?? 'chuk';
+  }
+
+  async findKFHHospitalId() {
+    const hospital = await prisma.hospital.findFirst({
+      where: { name: 'King Faisal Hospital' },
+    });
+    return hospital?.id ?? 'kfh';
   }
 
   async getOrCreateLocalPatientFromIdentifier(identifier: string, hospitalId: string) {
@@ -190,7 +220,110 @@ export class PatientService {
     return rowsByNational[0] ?? null;
   }
 
-  async getPatientById(id: string) {
+  async getPatientById(id: string, hospitalId?: string) {
+    // Check which hospital the user is from
+    let hospital = null;
+    if (hospitalId) {
+      hospital = await prisma.hospital.findUnique({
+        where: { id: hospitalId },
+      });
+      console.log('[DEBUG] Hospital lookup:', { hospitalId, hospital });
+    }
+
+    // If hospital is King Faisal Hospital (KFH), fetch from Oracle
+    if (hospital && hospital.name.toLowerCase().includes('king faisal')) {
+      console.log('[DEBUG] KFH branch - fetching from Oracle');
+      try {
+        // Try to find patient by numeric ID or national ID
+        const numericId = parseInt(id, 10);
+        console.log('[DEBUG] Parsed numericId:', numericId, 'original id:', id);
+        let kfhPatient = null;
+
+        if (!isNaN(numericId)) {
+          kfhPatient = await kfhOracleService.getPatientById(numericId);
+          console.log('[DEBUG] getPatientById result:', kfhPatient ? 'found' : 'not found');
+        }
+
+        if (!kfhPatient) {
+          console.log('[DEBUG] Trying getPatientByNationalId with:', id);
+          kfhPatient = await kfhOracleService.getPatientByNationalId(id);
+          console.log('[DEBUG] getPatientByNationalId result:', kfhPatient ? 'found' : 'not found');
+        }
+
+        if (!kfhPatient) {
+          throw new AppError(404, 'Patient not found');
+        }
+
+        console.log('[DEBUG] Found KFH patient:', kfhPatient.PATIENT_ID, kfhPatient.FIRST_NAME);
+
+        const kfhHospitalId = await this.findKFHHospitalId();
+        const patient = normalizeKFHPatient(kfhPatient, kfhHospitalId, hospital.name);
+
+        // Fetch medical history from Oracle
+        console.log('[DEBUG] Fetching medical history for patient_id:', kfhPatient.PATIENT_ID);
+        const encounters = await kfhOracleService.getEncountersByPatientId(kfhPatient.PATIENT_ID);
+        const diagnoses = await kfhOracleService.getDiagnosesByPatientId(kfhPatient.PATIENT_ID);
+        const prescriptions = await kfhOracleService.getPrescriptionsByPatientId(kfhPatient.PATIENT_ID);
+        const labResults = await kfhOracleService.getLabResultsByPatientId(kfhPatient.PATIENT_ID);
+
+        console.log('[DEBUG] Medical history counts:', { 
+          encounters: encounters.length, 
+          diagnoses: diagnoses.length, 
+          prescriptions: prescriptions.length, 
+          labResults: labResults.length 
+        });
+
+        // Return patient with medical history from Oracle
+        return {
+          ...patient,
+          insurance: null,
+          encounters: encounters.map((enc: any) => ({
+            id: enc.ENCOUNTER_ID,
+            visitId: enc.VISIT_ID ?? null,
+            staffId: enc.STAFF_ID ?? null,
+            time: enc.ENCOUNTER_TIME ?? null,
+            notes: enc.NOTES ?? '',
+            type: enc.TYPE ?? '',
+          })),
+          diagnoses: diagnoses.map((diag: any) => ({
+            id: diag.DIAG_ID,
+            encounterId: diag.ENCOUNTER_ID ?? null,
+            icd10Code: diag.ICD10_CODE ?? '',
+            description: diag.DESCRIPTION ?? '',
+            isPrimary: diag.IS_PRIMARY === 1,
+            confirmedAt: diag.CONFIRMED_AT ?? null,
+          })),
+          medications: prescriptions.map((rx: any) => ({
+            id: rx.RX_ID,
+            encounterId: rx.ENCOUNTER_ID ?? null,
+            medicationId: rx.MED_ID ?? null,
+            dose: rx.DOSE ?? '',
+            frequency: rx.FREQUENCY ?? '',
+            durationDays: rx.DURATION_DAYS ?? null,
+            prescribedBy: rx.PRESCRIBED_BY ?? null,
+            prescriberName: '',
+            medicationName: '',
+            diagnosis: '',
+          })),
+          labResults: labResults.map((lab: any) => ({
+            id: lab.RESULT_ID,
+            orderId: lab.ORDER_ID ?? null,
+            parameter: lab.PARAMETER ?? '',
+            value: lab.VALUE ?? '',
+            unit: lab.UNIT ?? '',
+            refRange: lab.REF_RANGE ?? '',
+            flag: lab.FLAG ?? '',
+            resultedAt: lab.RESULTED_AT ?? null,
+          })),
+        };
+      } catch (error: any) {
+        if (error.statusCode === 404) throw error;
+        console.error('Error fetching KFH patient from Oracle:', error);
+        throw new AppError(500, 'Failed to fetch patient from KFH database');
+      }
+    }
+
+    // Otherwise, fetch from CHUK MySQL database
     let row = await this.getChukPatientByIdentifier(id);
 
     if (!row) {
@@ -209,7 +342,7 @@ export class PatientService {
 
     const chukHospitalId = await this.findChukHospitalId();
     const patient = normalizeChukPatient(row, chukHospitalId);
-    let insurance = {
+    let insurance: { id: number | null; scheme: string | null; memberNumber: string | null } = {
       id: row.insurance_id ?? null,
       scheme: null,
       memberNumber: null,
@@ -334,6 +467,24 @@ export class PatientService {
   }
 
   async getPatientsByHospital(hospitalId: string) {
+    // First, check which hospital this ID corresponds to
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
+    });
+
+    // If hospital is King Faisal Hospital (KFH), fetch from Oracle
+    if (hospital && hospital.name.toLowerCase().includes('king faisal')) {
+      try {
+        const kfhPatients = await kfhOracleService.getPatients(100);
+        const kfhHospitalId = await this.findKFHHospitalId();
+        return kfhPatients.map((row) => normalizeKFHPatient(row, kfhHospitalId, hospital.name));
+      } catch (error) {
+        console.error('Error fetching KFH patients from Oracle:', error);
+        throw new AppError(500, 'Failed to fetch patients from KFH database');
+      }
+    }
+
+    // Otherwise, fetch from CHUK MySQL database
     const query = `
       SELECT
         p.patient_id,

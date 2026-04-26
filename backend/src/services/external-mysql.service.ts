@@ -19,6 +19,7 @@ export interface ExternalHospitalInfo {
 
 export class ExternalMysqlService {
   async getPatientRecordsByNationalId(nationalId: string) {
+    console.log('[DEBUG] CHUK MySQL: Querying for nationalId:', nationalId);
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT
         p.patient_id AS id,
@@ -41,6 +42,7 @@ export class ExternalMysqlService {
       [nationalId]
     );
 
+    console.log('[DEBUG] CHUK MySQL: Found rows:', rows.length);
     return rows as ExternalPatientRecord[];
   }
 

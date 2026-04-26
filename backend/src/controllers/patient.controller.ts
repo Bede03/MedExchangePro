@@ -35,7 +35,7 @@ export const createPatient = async (req: Request, res: Response) => {
 
 export const getPatientById = async (req: Request, res: Response) => {
   try {
-    const patient = await patientService.getPatientById(req.params.id);
+    const patient = await patientService.getPatientById(req.params.id, req.user!.hospitalId);
 
     res.json({
       success: true,
@@ -51,8 +51,16 @@ export const getPatientById = async (req: Request, res: Response) => {
 
 export const getPatientWithExternalHistory = async (req: Request, res: Response) => {
   try {
-    const patient = await patientService.getPatientById(req.params.id);
-    const externalHistory = await externalMysqlService.getPatientRecordsByNationalId(patient.nationalId);
+    const patient = await patientService.getPatientById(req.params.id, req.user!.hospitalId);
+    
+    // Only fetch external history from CHUK MySQL if patient is NOT from KFH
+    // (KFH patients already have their medical history from Oracle in patientService)
+    const isKFHPatient = patient.hospital?.name?.toLowerCase().includes('king faisal');
+    let externalHistory = null;
+    
+    if (!isKFHPatient) {
+      externalHistory = await externalMysqlService.getPatientRecordsByNationalId(patient.nationalId);
+    }
 
     res.json({
       success: true,

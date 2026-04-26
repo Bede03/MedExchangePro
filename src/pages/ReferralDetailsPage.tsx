@@ -21,6 +21,9 @@ function formatDate(iso: string) {
 }
 
 export function ReferralDetailsPage() {
+  // State for patient data fetched from backend (for responding hospital)
+  const [sharedPatient, setSharedPatient] = useState<any>(null);
+  const [loadingSharedPatient, setLoadingSharedPatient] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -92,7 +95,7 @@ export function ReferralDetailsPage() {
             id: response.data.id,
             referral_number: response.data.referralNumber,
             patient_id: response.data.patientId,
-            patient_name: response.data.patient?.name || '',
+            patient_name: response.data.patient?.patient_name || response.data.patient?.name || '',
             reason: response.data.reason,
             status: response.data.status as ReferralStatus,
             priority: response.data.priority as any,
@@ -100,6 +103,20 @@ export function ReferralDetailsPage() {
             receiving_hospital_id: response.data.receivingHospitalId,
             created_at: response.data.createdAt,
             department: response.data.department,
+            // Patient demographics from referral payload or patient object
+            patient_dob: response.data.patient?.patient_dob || response.data.patientDob,
+            patient_gender: response.data.patient?.patient_gender || response.data.patientGender,
+            patient_phone: response.data.patient?.patient_phone || response.data.patientPhone,
+            patient_national_id: response.data.patient?.patient_national_id || response.data.patientNationalId,
+            patient_address: response.data.patient?.patient_address || response.data.patientAddress,
+            // Medical history, lab results, and documents from external database
+            medical_history: response.data.patient?.medical_history || response.data.medicalHistory,
+            lab_results: response.data.patient?.lab_results || response.data.labResults,
+            patient_documents: response.data.patient?.patient_documents || response.data.patientDocuments,
+            allergies: response.data.patient?.allergies || response.data.allergies,
+            current_medications: response.data.patient?.current_medications || response.data.currentMedications,
+            diagnoses: response.data.patient?.diagnoses || response.data.diagnoses,
+            vitals: response.data.patient?.vitals || response.data.vitals,
           };
           setReferralData(mapped);
 
@@ -148,7 +165,36 @@ export function ReferralDetailsPage() {
     return map;
   }, [hospitals]);
 
-  const patient = useMemo(() => patients.find((p) => p.id === referral?.patient_id) ?? null, [patients, referral?.patient_id]);
+  // Use local patient list for non-responding hospital, otherwise fetch from backend
+  const patient = useMemo(() => {
+    if (user && referral && user.hospital_id === referral.receiving_hospital_id) {
+      return sharedPatient;
+    }
+    return patients.find((p) => p.id === referral?.patient_id) ?? null;
+  }, [patients, referral?.patient_id, user, referral, sharedPatient]);
+  // Fetch patient data from backend if this hospital is the responding hospital
+  useEffect(() => {
+    const fetchSharedPatient = async () => {
+      if (user && referral && user.hospital_id === referral.receiving_hospital_id && referral.patient_id) {
+        setLoadingSharedPatient(true);
+        try {
+          const response = await apiClient.patients.get(referral.patient_id);
+          if (response && response.data) {
+            setSharedPatient(response.data);
+          } else {
+            setSharedPatient(null);
+          }
+        } catch (err) {
+          setSharedPatient(null);
+        } finally {
+          setLoadingSharedPatient(false);
+        }
+      } else {
+        setSharedPatient(null);
+      }
+    };
+    fetchSharedPatient();
+  }, [user, referral]);
 
   const flow = referral && referral.status ? statusFlow[referral.status] : { label: '', next: null };
 
@@ -541,29 +587,94 @@ export function ReferralDetailsPage() {
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{patient?.name ?? referral.patient_name}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_name ?? patient?.name ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Date of Birth</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{patient ? formatDate(patient.dob) : '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_dob ? formatDate(referral.patient_dob) : (patient?.dob ? formatDate(patient.dob) : '—')}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gender</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{patient?.gender ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_gender ?? patient?.gender ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{patient?.phone ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_phone ?? patient?.phone ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">National ID</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{patient?.national_id ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_national_id ?? patient?.national_id ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Address</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{patient?.address ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_address ?? patient?.address ?? '—'}</p>
             </div>
           </div>
+
+          {/* Medical History Section */}
+          {(referral.medical_history || referral.lab_results || referral.diagnoses || referral.current_medications) && (
+            <div className="mt-6 border-t border-slate-200 pt-6">
+              <p className="text-sm font-semibold text-slate-900 mb-4">Medical Information</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {referral.medical_history && (
+                  <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Medical History</p>
+                    <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{referral.medical_history}</p>
+                  </div>
+                )}
+                {referral.lab_results && (
+                  <div className="rounded-lg bg-purple-50 border border-purple-200 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">Lab Results</p>
+                    <p className="mt-1 text-sm text-purple-900 whitespace-pre-wrap">{referral.lab_results}</p>
+                  </div>
+                )}
+                {referral.diagnoses && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Diagnoses</p>
+                    <p className="mt-1 text-sm text-amber-900 whitespace-pre-wrap">{referral.diagnoses}</p>
+                  </div>
+                )}
+                {referral.current_medications && (
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Current Medications</p>
+                    <p className="mt-1 text-sm text-blue-900 whitespace-pre-wrap">{referral.current_medications}</p>
+                  </div>
+                )}
+                {referral.allergies && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Allergies</p>
+                    <p className="mt-1 text-sm text-red-900 whitespace-pre-wrap">{referral.allergies}</p>
+                  </div>
+                )}
+                {referral.vitals && (
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Vitals</p>
+                    <p className="mt-1 text-sm text-emerald-900 whitespace-pre-wrap">{referral.vitals}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Lab Results Section */}
+          {referral.lab_results && (
+            <div className="mt-6 border-t border-slate-200 pt-6">
+              <p className="text-sm font-semibold text-slate-900 mb-4">Lab Results</p>
+              <div className="rounded-lg bg-purple-50 border border-purple-200 p-4">
+                <p className="text-sm text-purple-900 whitespace-pre-wrap">{referral.lab_results}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Patient Documents Section */}
+          {referral.patient_documents && (
+            <div className="mt-6 border-t border-slate-200 pt-6">
+              <p className="text-sm font-semibold text-slate-900 mb-4">Patient Documents</p>
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <p className="text-sm text-slate-900 whitespace-pre-wrap">{referral.patient_documents}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Shared Medical Records Section */}

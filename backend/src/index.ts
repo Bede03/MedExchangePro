@@ -14,6 +14,7 @@ import hospitalRoutes from './routes/hospital.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import externalMysqlRoutes from './routes/external-mysql.routes.js';
+import kfhOracleRoutes from './routes/kfh-oracle.routes.js';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +31,37 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Test endpoint to verify Oracle queries
+app.get('/test-oracle/:patientId', async (req, res) => {
+  try {
+    const { kfhOracleService } = await import('./services/kfh-oracle.service.js');
+    const patientId = parseInt(req.params.patientId);
+    
+    const patient = await kfhOracleService.getPatientById(patientId);
+    if (!patient) {
+      return res.json({ success: false, message: 'Patient not found' });
+    }
+    
+    const encounters = await kfhOracleService.getEncountersByPatientId(patientId);
+    const diagnoses = await kfhOracleService.getDiagnosesByPatientId(patientId);
+    const prescriptions = await kfhOracleService.getPrescriptionsByPatientId(patientId);
+    const labResults = await kfhOracleService.getLabResultsByPatientId(patientId);
+    
+    res.json({
+      success: true,
+      patient: { patient_id: patient.patient_id, first_name: patient.first_name, last_name: patient.last_name },
+      counts: {
+        encounters: encounters.length,
+        diagnoses: diagnoses.length,
+        prescriptions: prescriptions.length,
+        labResults: labResults.length
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/patients', patientRoutes);
@@ -39,6 +71,7 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/external-mysql', externalMysqlRoutes);
+app.use('/api/kfh-oracle', kfhOracleRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -37,6 +37,20 @@ export interface Referral {
   referral_number?: number;
   patient_id: string;
   patient_name: string;
+  // Shared patient info fields (optional)
+  patient_dob?: string;
+  patient_gender?: string;
+  patient_phone?: string;
+  patient_national_id?: string;
+  patient_address?: string;
+  // Medical history, lab results, and documents
+  medical_history?: string;
+  lab_results?: string;
+  patient_documents?: string;
+  allergies?: string;
+  current_medications?: string;
+  diagnoses?: string;
+  vitals?: string;
   reason: string;
   status: ReferralStatus;
   priority: ReferralPriority;
