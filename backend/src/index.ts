@@ -49,7 +49,7 @@ app.get('/test-oracle/:patientId', async (req, res) => {
     
     res.json({
       success: true,
-      patient: { patient_id: patient.patient_id, first_name: patient.first_name, last_name: patient.last_name },
+      patient: { patient_id: patient.PATIENT_ID, first_name: patient.FIRST_NAME, last_name: patient.LAST_NAME },
       counts: {
         encounters: encounters.length,
         diagnoses: diagnoses.length,

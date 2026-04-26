@@ -369,14 +369,14 @@ export class KFHOracleService {
       // Get visits
       const visitsResult = await connection.execute(
         `SELECT * FROM visits WHERE patient_id = :patientId ORDER BY admitted_at DESC`,
-        [patient.patient_id],
+        [patient.PATIENT_ID],
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
 
       // Get referrals
       const referralsResult = await connection.execute(
         `SELECT * FROM referrals WHERE patient_id = :patientId ORDER BY referral_date DESC`,
-        [patient.patient_id],
+        [patient.PATIENT_ID],
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
 
@@ -508,50 +508,6 @@ export class KFHOracleService {
     }
   }
 
-  // Get prescriptions by patient ID
-  async getPrescriptionsByPatientId(patientId: number): Promise<KFHPrescription[]> {
-    const connection = await getOracleConnection();
-    try {
-      console.log('[DEBUG KFH] getPrescriptionsByPatientId called with patientId:', patientId);
-      const result = await connection.execute(
-        `SELECT p.rx_id, p.encounter_id, p.med_id, p.dose, p.frequency, p.duration_days, p.prescribed_by, p.e_prescription, p.ddi_checked
-         FROM prescriptions p
-         JOIN encounters e ON p.encounter_id = e.encounter_id
-         JOIN visits v ON e.visit_id = v.visit_id
-         WHERE v.patient_id = :patientId
-         ORDER BY p.rx_id DESC`,
-        { patientId },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
-      console.log('[DEBUG KFH] getPrescriptionsByPatientId result rows:', result.rows?.length);
-      return result.rows as KFHPrescription[];
-    } finally {
-      await connection.close();
-    }
   }
-
-  // Get lab results by patient ID
-  async getLabResultsByPatientId(patientId: number): Promise<KHFLabResult[]> {
-    const connection = await getOracleConnection();
-    try {
-      console.log('[DEBUG KFH] getLabResultsByPatientId called with patientId:', patientId);
-      const result = await connection.execute(
-        `SELECT lr.result_id, lr.order_id, lr.parameter, lr.value, lr.unit, lr.ref_range, lr.flag, lr.resulted_at
-         FROM lab_results lr
-         JOIN lab_orders lo ON lr.order_id = lo.order_id
-         JOIN encounters e ON lo.encounter_id = e.encounter_id
-         JOIN visits v ON e.visit_id = v.visit_id
-         WHERE v.patient_id = :patientId
-         ORDER BY lr.resulted_at DESC`,
-        { patientId },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
-      console.log('[DEBUG KFH] getLabResultsByPatientId result rows:', result.rows?.length);
-      return result.rows as KHFLabResult[];
-    } finally {
-      await connection.close();
-    }
-  }
-}
 
 export const kfhOracleService = new KFHOracleService();
