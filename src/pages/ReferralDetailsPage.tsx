@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Copy, Check, X, AlertCircle, Send } from 'lucide-react';
+import { ArrowLeft, Copy, Check, X, AlertCircle, Send, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { StatusBadge } from '../components/UI/StatusBadge';
@@ -21,13 +21,10 @@ function formatDate(iso: string) {
 }
 
 export function ReferralDetailsPage() {
-  // State for patient data fetched from backend (for responding hospital)
-  const [sharedPatient, setSharedPatient] = useState<any>(null);
-  const [loadingSharedPatient, setLoadingSharedPatient] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { updateReferralStatus, hospitals, patients } = useMockData();
+  const { updateReferralStatus, hospitals } = useMockData();
   const [referralData, setReferralData] = useState<Partial<Referral> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +46,70 @@ export function ReferralDetailsPage() {
   const [isAccepted, setIsAccepted] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [respondingHospitalPatientData, setRespondingHospitalPatientData] = useState<any>(null);
+  const [loadingRespondingData, setLoadingRespondingData] = useState(false);
+  const [respondingHospitalDataError, setRespondingHospitalDataError] = useState<string | null>(null);
+
+
+  // Calculate what data will be shared
+  const sharedDataSummary = useMemo(() => {
+    const referral = referralData;
+    const medicalRecords = [
+      referral?.medical_history,
+      referral?.diagnoses,
+      referral?.current_medications,
+      referral?.allergies,
+      referral?.vitals,
+    ].filter(Boolean).length;
+
+    const labResults = referral?.lab_results ? 1 : 0;
+    const attachments = referral?.patient_documents ? 1 : 0;
+
+    return { medicalRecords, labResults, attachments };
+  }, [referralData]);
+
+  // Helper function to refresh referral data from external databases
+  async function refreshReferralData() {
+    if (!id) return;
+    try {
+      setIsRefreshing(true);
+      const response = await apiClient.referrals.get(id);
+      if (response.success && response.data) {
+        const mapped: Partial<Referral> = {
+          id: response.data.id,
+          referral_number: response.data.referralNumber,
+          patient_id: response.data.patientId,
+          patient_name: response.data.patient?.patient_name || response.data.patient?.name || '',
+          reason: response.data.reason,
+          status: response.data.status as ReferralStatus,
+          priority: response.data.priority as any,
+          requesting_hospital_id: response.data.requestingHospitalId,
+          receiving_hospital_id: response.data.receivingHospitalId,
+          created_at: response.data.createdAt,
+          department: response.data.department,
+          patient_dob: response.data.patient?.patient_dob || response.data.patientDob,
+          patient_gender: response.data.patient?.patient_gender || response.data.patientGender,
+          patient_phone: response.data.patient?.patient_phone || response.data.patientPhone,
+          patient_national_id: response.data.patient?.patient_national_id || response.data.patientNationalId,
+          patient_address: response.data.patient?.patient_address || response.data.patientAddress,
+          medical_history: response.data.patient?.medical_history || response.data.medicalHistory,
+          lab_results: response.data.patient?.lab_results || response.data.labResults,
+          patient_documents: response.data.patient?.patient_documents || response.data.patientDocuments,
+          allergies: response.data.patient?.allergies || response.data.allergies,
+          current_medications: response.data.patient?.current_medications || response.data.currentMedications,
+          diagnoses: response.data.patient?.diagnoses || response.data.diagnoses,
+          vitals: response.data.patient?.vitals || response.data.vitals,
+        };
+        setReferralData(mapped);
+      }
+    } catch (err: any) {
+      console.error('Failed to refresh referral data:', err);
+      alert('Failed to refresh referral data: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   // Helper function to update referral status with proper error handling
   async function updateReferralStatusWithAuth(referralId: string, newStatus: ReferralStatus) {
@@ -103,13 +164,12 @@ export function ReferralDetailsPage() {
             receiving_hospital_id: response.data.receivingHospitalId,
             created_at: response.data.createdAt,
             department: response.data.department,
-            // Patient demographics from referral payload or patient object
+            // Use external-sourced patient fields from the referral response as canonical values
             patient_dob: response.data.patient?.patient_dob || response.data.patientDob,
             patient_gender: response.data.patient?.patient_gender || response.data.patientGender,
             patient_phone: response.data.patient?.patient_phone || response.data.patientPhone,
             patient_national_id: response.data.patient?.patient_national_id || response.data.patientNationalId,
             patient_address: response.data.patient?.patient_address || response.data.patientAddress,
-            // Medical history, lab results, and documents from external database
             medical_history: response.data.patient?.medical_history || response.data.medicalHistory,
             lab_results: response.data.patient?.lab_results || response.data.labResults,
             patient_documents: response.data.patient?.patient_documents || response.data.patientDocuments,
@@ -120,8 +180,8 @@ export function ReferralDetailsPage() {
           };
           setReferralData(mapped);
 
-          // Fetch shared records if receiving hospital
-          if (user && user.hospital_id === response.data.receivingHospitalId) {
+          // Fetch shared records for both requesting and receiving hospitals
+          if (user && (user.hospital_id === response.data.receivingHospitalId || user.hospital_id === response.data.requestingHospitalId)) {
             try {
               setLoadingRecords(true);
               const recordsResponse = await apiClient.patientRecords.getByReferral(id);
@@ -155,6 +215,37 @@ export function ReferralDetailsPage() {
     fetchReferral();
   }, [id, user]);
 
+  useEffect(() => {
+    const fetchRespondingHospitalData = async () => {
+      if (!user || !referralData || user.hospital_id !== referralData.receiving_hospital_id || !id) {
+        setRespondingHospitalPatientData(null);
+        return;
+      }
+
+      try {
+        setRespondingHospitalDataError(null);
+        setLoadingRespondingData(true);
+        const response = await apiClient.referrals.externalPatientData(id);
+        if (response && response.success && response.data) {
+          setRespondingHospitalPatientData(response.data);
+        } else {
+          setRespondingHospitalPatientData(null);
+        }
+      } catch (err: any) {
+        const message = err?.message || 'Failed to fetch responding hospital patient data';
+        console.error('Failed to fetch responding hospital patient data:', message);
+        setRespondingHospitalDataError(message);
+        setRespondingHospitalPatientData(null);
+      } finally {
+        setLoadingRespondingData(false);
+      }
+    };
+
+    fetchRespondingHospitalData();
+  }, [user, referralData, id]);
+
+
+
   // Define referral (may be null)
   const referral = referralData as Referral | null;
 
@@ -164,37 +255,6 @@ export function ReferralDetailsPage() {
     hospitals.forEach((h) => map.set(h.id, h.name));
     return map;
   }, [hospitals]);
-
-  // Use local patient list for non-responding hospital, otherwise fetch from backend
-  const patient = useMemo(() => {
-    if (user && referral && user.hospital_id === referral.receiving_hospital_id) {
-      return sharedPatient;
-    }
-    return patients.find((p) => p.id === referral?.patient_id) ?? null;
-  }, [patients, referral?.patient_id, user, referral, sharedPatient]);
-  // Fetch patient data from backend if this hospital is the responding hospital
-  useEffect(() => {
-    const fetchSharedPatient = async () => {
-      if (user && referral && user.hospital_id === referral.receiving_hospital_id && referral.patient_id) {
-        setLoadingSharedPatient(true);
-        try {
-          const response = await apiClient.patients.get(referral.patient_id);
-          if (response && response.data) {
-            setSharedPatient(response.data);
-          } else {
-            setSharedPatient(null);
-          }
-        } catch (err) {
-          setSharedPatient(null);
-        } finally {
-          setLoadingSharedPatient(false);
-        }
-      } else {
-        setSharedPatient(null);
-      }
-    };
-    fetchSharedPatient();
-  }, [user, referral]);
 
   const flow = referral && referral.status ? statusFlow[referral.status] : { label: '', next: null };
 
@@ -288,6 +348,7 @@ export function ReferralDetailsPage() {
   
   // Check if user is from requesting hospital
   const isRequestingHospital = user && referral && user.hospital_id === referral.requesting_hospital_id;
+  const isRespondingHospital = user && referral && user.hospital_id === referral.receiving_hospital_id;
 
   // Both hospitals involved in the referral can share records
   const canShareRecords = user && referral &&
@@ -314,13 +375,16 @@ export function ReferralDetailsPage() {
       });
 
       if (response.success) {
-        // Update referral status to approved
-        await updateReferralStatusWithAuth(referral.id, 'approved');
-        
-        // Update shared records in display
+        // Immediately update the referral state so the UI hides the approved/share prompt.
+        setReferralData(prev => prev ? { ...prev, status: 'completed' } : prev);
+
+        // Refresh referral from backend so completed status persists.
+        await refreshReferralData();
+
+        // Update shared records in display.
         setSharedRecords(response.data);
         
-        // Clear any previous share error and reset form
+        // Clear any previous share error and reset form.
         setShareError(null);
         setShareFormData({
           testResults: '',
@@ -354,14 +418,26 @@ export function ReferralDetailsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={refreshReferralData}
+              disabled={isRefreshing}
+              title="Refresh data from external databases"
+              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-700 disabled:opacity-50"
+            >
+              <RotateCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
           <div className="mt-4">
             <h1 className="text-2xl font-semibold text-slate-900">{referral.patient_name}</h1>
             <p className="mt-1 text-sm text-slate-600">
@@ -500,6 +576,7 @@ export function ReferralDetailsPage() {
           </div>
         </div>
 
+
         {/* Authorization Message & Action Buttons */}
         {referral.status === 'pending' && canApproveOrReject && !isAccepted && (
           <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 px-6 py-4">
@@ -535,7 +612,7 @@ export function ReferralDetailsPage() {
         )}
 
         {/* Referral Accepted Success Card */}
-        {referral.status === 'approved' && canShareRecords && (
+        {referral.status === 'approved' && isRespondingHospital && (
           <div className="mt-6 rounded-lg border border-green-200 bg-green-50 px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -561,6 +638,18 @@ export function ReferralDetailsPage() {
                 </button>
                 <button
                   onClick={() => {
+                    // Auto-populate shareFormData from respondingHospitalPatientData
+                    if (respondingHospitalPatientData) {
+                      setShareFormData({
+                        testResults: respondingHospitalPatientData.lab_results || '',
+                        medications: respondingHospitalPatientData.current_medications || '',
+                        allergies: respondingHospitalPatientData.allergies || '',
+                        medicalHistory: respondingHospitalPatientData.medical_history || '',
+                        vitalsLastRecorded: respondingHospitalPatientData.vitals || '',
+                        currentDiagnosis: respondingHospitalPatientData.diagnoses || '',
+                        clinicalNotes: '',
+                      });
+                    }
                     setShareError(null);
                     setShowConfirmModal(true);
                   }}
@@ -587,82 +676,89 @@ export function ReferralDetailsPage() {
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_name ?? patient?.name ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_name ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Date of Birth</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_dob ? formatDate(referral.patient_dob) : (patient?.dob ? formatDate(patient.dob) : '—')}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_dob ? formatDate(referral.patient_dob) : '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gender</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_gender ?? patient?.gender ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_gender ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_phone ?? patient?.phone ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_phone ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">National ID</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_national_id ?? patient?.national_id ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_national_id ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Address</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_address ?? patient?.address ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{referral.patient_address ?? '—'}</p>
             </div>
           </div>
 
-          {/* Medical History Section */}
-          {(referral.medical_history || referral.lab_results || referral.diagnoses || referral.current_medications) && (
+          {/* Medical Information Section - only shown for responding hospital */}
+          {isRespondingHospital && (
             <div className="mt-6 border-t border-slate-200 pt-6">
-              <p className="text-sm font-semibold text-slate-900 mb-4">Medical Information</p>
-              <div className="grid gap-4 md:grid-cols-2">
-                {referral.medical_history && (
-                  <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Medical History</p>
-                    <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{referral.medical_history}</p>
-                  </div>
-                )}
-                {referral.lab_results && (
-                  <div className="rounded-lg bg-purple-50 border border-purple-200 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">Lab Results</p>
-                    <p className="mt-1 text-sm text-purple-900 whitespace-pre-wrap">{referral.lab_results}</p>
-                  </div>
-                )}
-                {referral.diagnoses && (
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Diagnoses</p>
-                    <p className="mt-1 text-sm text-amber-900 whitespace-pre-wrap">{referral.diagnoses}</p>
-                  </div>
-                )}
-                {referral.current_medications && (
-                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Current Medications</p>
-                    <p className="mt-1 text-sm text-blue-900 whitespace-pre-wrap">{referral.current_medications}</p>
-                  </div>
-                )}
-                {referral.allergies && (
-                  <div className="rounded-lg bg-red-50 border border-red-200 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Allergies</p>
-                    <p className="mt-1 text-sm text-red-900 whitespace-pre-wrap">{referral.allergies}</p>
-                  </div>
-                )}
-                {referral.vitals && (
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Vitals</p>
-                    <p className="mt-1 text-sm text-emerald-900 whitespace-pre-wrap">{referral.vitals}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+              <p className="text-sm font-semibold text-slate-900 mb-2">Patient Medical Information</p>
+              <p className="text-xs text-slate-500 mb-4">Data fetched from {respondingHospitalPatientData? respondingHospitalPatientData.hospital : hospitalMap.get(referral.receiving_hospital_id) ?? 'responding hospital'} external database</p>
 
-          {/* Lab Results Section */}
-          {referral.lab_results && (
-            <div className="mt-6 border-t border-slate-200 pt-6">
-              <p className="text-sm font-semibold text-slate-900 mb-4">Lab Results</p>
-              <div className="rounded-lg bg-purple-50 border border-purple-200 p-4">
-                <p className="text-sm text-purple-900 whitespace-pre-wrap">{referral.lab_results}</p>
-              </div>
+              {loadingRespondingData ? (
+                <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">
+                  Loading patient medical data...
+                </div>
+              ) : respondingHospitalPatientData ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {respondingHospitalPatientData.medical_history && (
+                    <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Medical History</p>
+                      <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{respondingHospitalPatientData.medical_history}</p>
+                    </div>
+                  )}
+                  {respondingHospitalPatientData.lab_results && (
+                    <div className="rounded-lg bg-purple-50 border border-purple-200 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">Lab Results</p>
+                      <p className="mt-1 text-sm text-purple-900 whitespace-pre-wrap">{respondingHospitalPatientData.lab_results}</p>
+                    </div>
+                  )}
+                  {respondingHospitalPatientData.diagnoses && (
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Diagnoses</p>
+                      <p className="mt-1 text-sm text-amber-900 whitespace-pre-wrap">{respondingHospitalPatientData.diagnoses}</p>
+                    </div>
+                  )}
+                  {respondingHospitalPatientData.current_medications && (
+                    <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Current Medications</p>
+                      <p className="mt-1 text-sm text-blue-900 whitespace-pre-wrap">{respondingHospitalPatientData.current_medications}</p>
+                    </div>
+                  )}
+                  {respondingHospitalPatientData.allergies && (
+                    <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Allergies</p>
+                      <p className="mt-1 text-sm text-red-900 whitespace-pre-wrap">{respondingHospitalPatientData.allergies}</p>
+                    </div>
+                  )}
+                  {respondingHospitalPatientData.vitals && (
+                    <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Vitals</p>
+                      <p className="mt-1 text-sm text-emerald-900 whitespace-pre-wrap">{respondingHospitalPatientData.vitals}</p>
+                    </div>
+                  )}
+                </div>
+              ) : respondingHospitalDataError ? (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">Unable to load responding hospital medical data</p>
+                  <p>{respondingHospitalDataError}</p>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">
+                  No responding-hospital medical data available for this patient yet.
+                </div>
+              )}
             </div>
           )}
 
@@ -678,13 +774,13 @@ export function ReferralDetailsPage() {
         </div>
 
         {/* Shared Medical Records Section */}
-        {sharedRecords && canApproveOrReject && (
+        {sharedRecords && (
           <div className="mt-6 rounded-lg border border-slate-200 bg-emerald-50 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Shared Medical Records</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Medical data shared by {hospitalMap.get(referral.requesting_hospital_id) ?? 'Unknown'}
+                  Medical data shared by {hospitalMap.get(referral.receiving_hospital_id) ?? 'receiving hospital'}
                 </p>
               </div>
               <span className="inline-flex items-center rounded-full bg-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
@@ -717,22 +813,22 @@ export function ReferralDetailsPage() {
                   <p className="mt-1 text-sm text-slate-900">{sharedRecords.medicalHistory}</p>
                 </div>
               )}
-              {sharedRecords.vitals && (
+              {sharedRecords.vitalsLastRecorded && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vitals</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.vitals}</p>
-                </div>
-              )}
-              {sharedRecords.diagnoses && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Diagnoses</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.diagnoses}</p>
+                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.vitalsLastRecorded}</p>
                 </div>
               )}
               {sharedRecords.clinicalNotes && (
                 <div className="md:col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Clinical Notes</p>
                   <p className="mt-1 text-sm text-slate-900">{sharedRecords.clinicalNotes}</p>
+                </div>
+              )}
+              {(sharedRecords.patientDocuments || referral.patient_documents) && (
+                <div className="md:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient Documents</p>
+                  <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{sharedRecords.patientDocuments || referral.patient_documents}</p>
                 </div>
               )}
             </div>
@@ -743,20 +839,7 @@ export function ReferralDetailsPage() {
           </div>
         )}
 
-        {/* Shared Medical Records Restricted Message */}
-        {sharedRecords && !canApproveOrReject && (
-          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-6">
-            <div className="flex items-center gap-3">
-              <div className="text-amber-600">⚠</div>
-              <div>
-                <p className="text-sm font-semibold text-amber-900">Shared Medical Records</p>
-                <p className="mt-1 text-sm text-amber-800">
-                  Medical records have been shared for this referral, but only the receiving hospital can view them.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-6">
           <p className="text-sm font-semibold text-slate-900">Referral Timeline</p>
@@ -780,15 +863,15 @@ export function ReferralDetailsPage() {
       {/* Confirm Patient Data Sharing Modal */}
       {showConfirmModal && canApproveOrReject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg">
             <div className="flex items-start gap-3">
-              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="h-5 w-5 text-red-600" />
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Send className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Confirm Patient Data Sharing</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Share Patient Medical Records</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  You are about to share this patient's medical information with {hospitalMap.get(referral?.requesting_hospital_id) ?? 'Unknown'}. Please confirm that this is correct.
+                  Review and edit the patient's medical information before sharing with {hospitalMap.get(referral?.requesting_hospital_id) ?? 'Unknown'}.
                 </p>
               </div>
             </div>
@@ -813,33 +896,86 @@ export function ReferralDetailsPage() {
             </div>
 
             <div className="mt-6 rounded-lg bg-blue-50 p-4 border border-blue-200">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-3">Data to be shared:</p>
-              <ul className="space-y-2">
-                <li className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded border-2 border-blue-600 flex items-center justify-center">
-                    <Check className="h-3 w-3 text-blue-600" />
-                  </div>
-                  <span className="text-sm text-blue-900">Personal information (name, DOB, gender, contact)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded border-2 border-blue-600 flex items-center justify-center">
-                    <Check className="h-3 w-3 text-blue-600" />
-                  </div>
-                  <span className="text-sm text-blue-900">2 medical record(s)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded border-2 border-blue-600 flex items-center justify-center">
-                    <Check className="h-3 w-3 text-blue-600" />
-                  </div>
-                  <span className="text-sm text-blue-900">1 lab result(s)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded border-2 border-blue-600 flex items-center justify-center">
-                    <Check className="h-3 w-3 text-blue-600" />
-                  </div>
-                  <span className="text-sm text-blue-900">Associated attachments</span>
-                </li>
-              </ul>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-3">Review & Edit Patient Data to Share:</p>
+              
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Test Results</label>
+                  <textarea
+                    value={shareFormData.testResults}
+                    onChange={(e) => setShareFormData(prev => ({ ...prev, testResults: e.target.value }))}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="Enter lab results and test data..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Medications</label>
+                  <textarea
+                    value={shareFormData.medications}
+                    onChange={(e) => setShareFormData(prev => ({ ...prev, medications: e.target.value }))}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Enter current medications..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Allergies</label>
+                  <textarea
+                    value={shareFormData.allergies}
+                    onChange={(e) => setShareFormData(prev => ({ ...prev, allergies: e.target.value }))}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Enter known allergies..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Medical History</label>
+                  <textarea
+                    value={shareFormData.medicalHistory}
+                    onChange={(e) => setShareFormData(prev => ({ ...prev, medicalHistory: e.target.value }))}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="Enter medical history..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Vitals (Last Recorded)</label>
+                  <textarea
+                    value={shareFormData.vitalsLastRecorded}
+                    onChange={(e) => setShareFormData(prev => ({ ...prev, vitalsLastRecorded: e.target.value }))}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Enter recent vital signs..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Current Diagnosis</label>
+                  <textarea
+                    value={shareFormData.currentDiagnosis}
+                    onChange={(e) => setShareFormData(prev => ({ ...prev, currentDiagnosis: e.target.value }))}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Enter current diagnosis..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Clinical Notes</label>
+                  <textarea
+                    value={shareFormData.clinicalNotes}
+                    onChange={(e) => setShareFormData(prev => ({ ...prev, clinicalNotes: e.target.value }))}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="Enter additional clinical notes..."
+                  />
+                </div>
+              </div>
             </div>
 
             {shareError ? (
@@ -854,6 +990,16 @@ export function ReferralDetailsPage() {
                 onClick={() => {
                   setShareError(null);
                   setShowConfirmModal(false);
+                  // Reset form data when canceling
+                  setShareFormData({
+                    testResults: '',
+                    medications: '',
+                    allergies: '',
+                    medicalHistory: '',
+                    vitalsLastRecorded: '',
+                    currentDiagnosis: '',
+                    clinicalNotes: '',
+                  });
                 }}
                 className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >

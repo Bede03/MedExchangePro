@@ -64,6 +64,14 @@ export class PatientRecordsService {
       },
     });
 
+    await prisma.referral.update({
+      where: { id: referral.id },
+      data: {
+        status: 'completed',
+        completedAt: new Date(),
+      },
+    });
+
     return sharedRecord;
   }
 
@@ -121,6 +129,7 @@ export class PatientRecordsService {
     // Verify access
     const hasAccess =
       currentUser.hospitalId === sharedRecord.receivingHospitalId ||
+      currentUser.hospitalId === sharedRecord.referral.requestingHospitalId ||
       currentUser.role === 'admin';
 
     if (!hasAccess) {

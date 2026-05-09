@@ -204,6 +204,20 @@ export const apiClient = {
       return response.json();
     },
 
+    externalPatientData: async (id: string) => {
+      const response = await fetch(`${API_URL}/api/referrals/${encodeURIComponent(id)}/external-patient-data`, {
+        headers: apiClient.getHeaders(true),
+      });
+
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = body?.message || 'Failed to fetch external patient data';
+        throw new Error(message);
+      }
+
+      return body;
+    },
+
     stats: async () => {
       const response = await fetch(`${API_URL}/api/referrals/stats`, {
         headers: apiClient.getHeaders(true),

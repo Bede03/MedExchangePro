@@ -14,6 +14,7 @@ router.use(authMiddleware);
 router.post('/', validateRequest(createReferralSchema), referralController.createReferral);
 router.get('/', referralController.getReferralsByHospital);
 router.get('/stats', referralController.getReferralStats);
+router.get('/:id/external-patient-data', referralController.getRespondingHospitalPatientData);
 router.get('/:id', referralController.getReferralById);
 router.put('/:id/status', validateRequest(updateReferralSchema), referralController.updateReferralStatus);
 

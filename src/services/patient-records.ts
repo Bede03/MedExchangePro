@@ -48,6 +48,7 @@ export interface SharedPatientRecord {
   vitalsLastRecorded?: Vitals;
   currentDiagnosis?: string;
   clinicalNotes?: string;
+  patientDocuments?: string;
   sharedAt: string;
   accessedAt: string;
   expiresAt: string;

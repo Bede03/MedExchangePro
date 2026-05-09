@@ -113,3 +113,24 @@ export const getReferralStats = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getRespondingHospitalPatientData = async (req: Request, res: Response) => {
+  try {
+    console.log(`[DEBUG] /api/referrals/${req.params.id}/external-patient-data called by user ${req.user?.id} hospital ${req.user?.hospitalId}`);
+    const patientData = await referralService.getRespondingHospitalPatientData(
+      req.params.id,
+      req.user!
+    );
+
+    res.json({
+      success: true,
+      data: patientData,
+    });
+  } catch (error: any) {
+    console.error('[DEBUG] getRespondingHospitalPatientData error:', error.message);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

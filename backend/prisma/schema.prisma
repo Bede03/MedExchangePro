@@ -206,6 +206,7 @@ model SharedPatientRecord {
   vitalsLastRecorded    String?  @map("vitals_last_recorded")
   currentDiagnosis      String?  @map("current_diagnosis")
   clinicalNotes         String?  @map("clinical_notes")
+  patientDocuments      String?  @map("patient_documents")
   
   sharedAt              DateTime @default(now()) @map("shared_at")
   accessedAt            DateTime @updatedAt @map("accessed_at")

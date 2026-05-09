@@ -68,13 +68,20 @@ interface PatientInsuranceRow extends RowDataPacket {
   member_number?: string;
 }
 
+const normalizeGender = (value: string | null | undefined): 'male' | 'female' | 'other' => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'm' || normalized === 'male') return 'male';
+  if (normalized === 'f' || normalized === 'female') return 'female';
+  return 'other';
+};
+
 const normalizeChukPatient = (row: ChukPatientRow, hospitalId: string, hospitalName = 'CHUK') => {
   const firstName = String(row.first_name ?? '');
   const lastName = String(row.last_name ?? '');
   return {
     id: String(row.patient_id ?? ''),
     name: [firstName, lastName].filter(Boolean).join(' '),
-    gender: String(row.gender ?? 'other'),
+    gender: normalizeGender(row.gender),
     dob: String(row.dob ?? ''),
     phone: String(row.phone ?? ''),
     address: String(row.address ?? ''),
@@ -95,7 +102,7 @@ const normalizeKFHPatient = (row: any, hospitalId: string, hospitalName = 'King 
   return {
     id: String(row.PATIENT_ID ?? ''),
     name: [firstName, lastName].filter(Boolean).join(' '),
-    gender: String(row.GENDER ?? 'other'),
+    gender: normalizeGender(row.GENDER),
     dob: row.DOB ? String(row.DOB) : '',
     phone: String(row.PHONE ?? ''),
     address: String(row.ADDRESS ?? ''),
@@ -130,6 +137,34 @@ export class PatientService {
       where: { id: identifier },
     });
     if (localPatient) return localPatient;
+
+    const kfhHospitalId = await this.findKFHHospitalId();
+    if (hospitalId === kfhHospitalId) {
+      const externalPatient = await this.getPatientById(identifier, hospitalId);
+      if (!externalPatient) {
+        throw new AppError(404, 'Patient not found');
+      }
+
+      const existingByNational = await prisma.patient.findUnique({
+        where: { nationalId: externalPatient.nationalId },
+      });
+      if (existingByNational) return existingByNational;
+
+      const patient = await prisma.patient.create({
+        data: {
+          id: externalPatient.id,
+          name: externalPatient.name,
+          gender: normalizeGender(externalPatient.gender),
+          dob: externalPatient.dob,
+          phone: externalPatient.phone,
+          address: externalPatient.address,
+          nationalId: externalPatient.nationalId,
+          hospitalId,
+        },
+      });
+
+      return patient;
+    }
 
     const chukRow = await this.getChukPatientByIdentifier(identifier);
     if (!chukRow) {

@@ -114,17 +114,12 @@ function formatMedicalData(externalData: any) {
 
 export class ReferralService {
   async createReferral(data: any, currentUser: JwtPayload) {
-    // Verify patient exists locally or resolve a CHUK patient ID into a local record
+    // Verify patient exists locally or resolve an external patient into a local record
     let patient = await prisma.patient.findUnique({
       where: { id: data.patientId },
     });
 
     if (!patient) {
-      const chukHospitalId = await patientService.findChukHospitalId();
-      if (currentUser.hospitalId !== chukHospitalId && currentUser.role !== 'admin') {
-        throw new AppError(404, 'Patient not found');
-      }
-
       patient = await patientService.getOrCreateLocalPatientFromIdentifier(
         data.patientId,
         currentUser.hospitalId
@@ -258,6 +253,45 @@ export class ReferralService {
         ...formattedMedicalData
       },
       _external_source: formattedMedicalData._external_source
+    };
+  }
+
+  async getRespondingHospitalPatientData(referralId: string, currentUser: JwtPayload) {
+    const referral = await prisma.referral.findUnique({
+      where: { id: referralId },
+      include: {
+        patient: true,
+        receivingHospital: true,
+      },
+    });
+
+    if (!referral) {
+      throw new AppError(404, 'Referral not found');
+    }
+
+    if (referral.receivingHospitalId !== currentUser.hospitalId && currentUser.role !== 'admin') {
+      throw new AppError(403, 'Only the responding hospital can access this patient data');
+    }
+
+    const nationalId = referral.patient.nationalId;
+    const receivingHospitalName = referral.receivingHospital.name;
+
+    console.log(`[DEBUG] Looking up responding hospital patient data by nationalId=${nationalId} for hospital=${receivingHospitalName}`);
+    const externalMedicalData = await getPatientMedicalDataFromExternalDB(
+      nationalId,
+      receivingHospitalName
+    );
+
+    if (!externalMedicalData) {
+      throw new AppError(404, `Patient with national ID ${nationalId} not found in ${receivingHospitalName} database`);
+    }
+
+    const formattedMedicalData = formatMedicalData(externalMedicalData);
+
+    return {
+      nationalId,
+      hospital: receivingHospitalName,
+      ...formattedMedicalData,
     };
   }
 
