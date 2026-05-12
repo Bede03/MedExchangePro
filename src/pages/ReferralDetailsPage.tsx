@@ -896,17 +896,17 @@ export function ReferralDetailsPage() {
             </div>
 
             <div className="mt-6 rounded-lg bg-blue-50 p-4 border border-blue-200">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-3">Review & Edit Patient Data to Share:</p>
-              
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-3">Review Patient Data to Share</p>
+              <p className="text-sm text-slate-600 mb-4">The medical information below is read-only and comes directly from the external hospital system. Only add an optional clinician note if needed.</p>
+
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Test Results</label>
                   <textarea
                     value={shareFormData.testResults}
-                    onChange={(e) => setShareFormData(prev => ({ ...prev, testResults: e.target.value }))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    readOnly
+                    className="w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                     rows={3}
-                    placeholder="Enter lab results and test data..."
                   />
                 </div>
 
@@ -914,10 +914,9 @@ export function ReferralDetailsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Medications</label>
                   <textarea
                     value={shareFormData.medications}
-                    onChange={(e) => setShareFormData(prev => ({ ...prev, medications: e.target.value }))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    readOnly
+                    className="w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                     rows={2}
-                    placeholder="Enter current medications..."
                   />
                 </div>
 
@@ -925,10 +924,9 @@ export function ReferralDetailsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Allergies</label>
                   <textarea
                     value={shareFormData.allergies}
-                    onChange={(e) => setShareFormData(prev => ({ ...prev, allergies: e.target.value }))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    readOnly
+                    className="w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                     rows={2}
-                    placeholder="Enter known allergies..."
                   />
                 </div>
 
@@ -936,10 +934,9 @@ export function ReferralDetailsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Medical History</label>
                   <textarea
                     value={shareFormData.medicalHistory}
-                    onChange={(e) => setShareFormData(prev => ({ ...prev, medicalHistory: e.target.value }))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    readOnly
+                    className="w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                     rows={3}
-                    placeholder="Enter medical history..."
                   />
                 </div>
 
@@ -947,10 +944,9 @@ export function ReferralDetailsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Vitals (Last Recorded)</label>
                   <textarea
                     value={shareFormData.vitalsLastRecorded}
-                    onChange={(e) => setShareFormData(prev => ({ ...prev, vitalsLastRecorded: e.target.value }))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    readOnly
+                    className="w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                     rows={2}
-                    placeholder="Enter recent vital signs..."
                   />
                 </div>
 
@@ -958,21 +954,20 @@ export function ReferralDetailsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Current Diagnosis</label>
                   <textarea
                     value={shareFormData.currentDiagnosis}
-                    onChange={(e) => setShareFormData(prev => ({ ...prev, currentDiagnosis: e.target.value }))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    readOnly
+                    className="w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                     rows={2}
-                    placeholder="Enter current diagnosis..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Clinical Notes</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Referral Note (optional)</label>
                   <textarea
                     value={shareFormData.clinicalNotes}
                     onChange={(e) => setShareFormData(prev => ({ ...prev, clinicalNotes: e.target.value }))}
                     className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     rows={3}
-                    placeholder="Enter additional clinical notes..."
+                    placeholder="Add an optional note about the referral or shared data..."
                   />
                 </div>
               </div>

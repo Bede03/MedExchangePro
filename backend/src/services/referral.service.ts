@@ -63,6 +63,13 @@ async function getPatientMedicalDataFromExternalDB(nationalId: string, hospitalN
 }
 
 // Format medical data for response
+function normalizeGenderValue(value: string | null | undefined): string {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'm' || normalized === 'male') return 'male';
+  if (normalized === 'f' || normalized === 'female') return 'female';
+  return 'other';
+}
+
 function formatMedicalData(externalData: any) {
   if (!externalData) return {};
   
@@ -80,7 +87,7 @@ function formatMedicalData(externalData: any) {
   let medicationsStr = '';
   if (prescriptions && prescriptions.length > 0) {
     medicationsStr = prescriptions.map((p: any) => 
-      `${p.GENERIC_NAME || p.MED_ID || 'Medication'} - ${p.DOSE} ${p.FREQUENCY} for ${p.DURATION_DAYS} days`
+      `${p.GENERIC_NAME || p.MED_ID || p.medicationName || 'Medication'} - ${p.DOSE || p.dose || ''} ${p.FREQUENCY || ''} for ${p.DURATION_DAYS || p.durationDays || 'N/A'} days`
     ).join('; ');
   }
   
@@ -88,7 +95,7 @@ function formatMedicalData(externalData: any) {
   let labResultsStr = '';
   if (labResults && labResults.length > 0) {
     labResultsStr = labResults.slice(0, 10).map((lr: any) => 
-      `${lr.PARAMETER}: ${lr.VALUE} ${lr.UNIT || ''} (${lr.REF_RANGE || 'N/A'})`
+      `${lr.PARAMETER || lr.parameter}: ${lr.VALUE || lr.value} ${lr.UNIT || lr.unit || ''} (${lr.REF_RANGE || lr.refRange || 'N/A'})`
     ).join('; ');
   }
   
@@ -96,7 +103,7 @@ function formatMedicalData(externalData: any) {
   let medicalHistory = '';
   if (encounters && encounters.length > 0) {
     medicalHistory = encounters.slice(0, 5).map((e: any) => 
-      `${e.TYPE} - ${new Date(e.ENCOUNTER_TIME).toLocaleDateString()}`
+      `${e.TYPE || e.type} - ${new Date(e.ENCOUNTER_TIME || e.encounterTime).toLocaleDateString()}`
     ).join('; ');
   }
   
@@ -110,6 +117,58 @@ function formatMedicalData(externalData: any) {
     patient_documents: 'No documents available', // Would need document management system
     _external_source: source
   };
+}
+
+function formatExternalDemographics(patient: any) {
+  if (!patient) return {};
+  const name = patient.name || [patient.FIRST_NAME, patient.LAST_NAME].filter(Boolean).join(' ').trim();
+  const dob = patient.dob || (patient.DOB ? String(patient.DOB) : undefined);
+  const gender = normalizeGenderValue(patient.gender || patient.GENDER);
+  const phone = patient.phone || patient.PHONE;
+  const nationalId = patient.national_id || patient.NATIONAL_ID;
+  const address = patient.address || patient.ADDRESS;
+
+  return {
+    patient_name: name || undefined,
+    patient_dob: dob || undefined,
+    patient_gender: gender || undefined,
+    patient_phone: phone || undefined,
+    patient_national_id: nationalId || undefined,
+    patient_address: address || undefined,
+  };
+}
+
+async function getPatientMedicalDataUsingPatientService(patient: any, receivingHospitalName: string): Promise<any> {
+  if (!patient?.id) return null;
+  try {
+    // Determine the hospital to query based on the receiving hospital name
+    let hospitalId = patient.hospitalId;
+    
+    // If we're looking in a specific hospital context (receiving), try to find that hospital ID
+    if (receivingHospitalName) {
+      const targetHospital = await prisma.hospital.findFirst({
+        where: { name: { contains: receivingHospitalName, mode: 'insensitive' } },
+      });
+      if (targetHospital) {
+        hospitalId = targetHospital.id;
+      }
+    }
+
+    const externalPatient = await patientService.getPatientById(patient.id, hospitalId);
+    if (!externalPatient) return null;
+
+    return {
+      source: `${externalPatient.hospital?.name || 'External hospital'} database`,
+      patient: externalPatient,
+      diagnoses: externalPatient.diagnoses || [],
+      prescriptions: externalPatient.medications || [],
+      labResults: externalPatient.labResults || [],
+      encounters: externalPatient.encounters || [],
+    } as any;
+  } catch (error) {
+    console.error('[DEBUG] Fallback external lookup failed:', error);
+    return null;
+  }
 }
 
 export class ReferralService {
@@ -234,22 +293,26 @@ export class ReferralService {
       );
     }
 
+    // If national ID-based lookup fails, attempt a patient-service fallback using the requesting hospital context.
+    if (!externalMedicalData) {
+      externalMedicalData = await getPatientMedicalDataUsingPatientService(referral.patient, requestingHospitalName);
+    }
+
     // Format and attach medical data to referral response
     const formattedMedicalData = formatMedicalData(externalMedicalData);
+    const externalDemographics = formatExternalDemographics(externalMedicalData?.patient);
 
-    // Return referral with additional medical data
+    // Return referral with external demographics and medical data when available
     return {
       ...referral,
       patient: {
         ...referral.patient,
-        // Add patient demographics from local record
-        patient_name: referral.patient.name,
-        patient_dob: referral.patient.dob,
-        patient_gender: referral.patient.gender,
-        patient_phone: referral.patient.phone,
-        patient_national_id: referral.patient.nationalId,
-        patient_address: referral.patient.address,
-        // Add medical data from external database
+        patient_name: externalDemographics.patient_name || referral.patient.name,
+        patient_dob: externalDemographics.patient_dob || referral.patient.dob,
+        patient_gender: externalDemographics.patient_gender || referral.patient.gender,
+        patient_phone: externalDemographics.patient_phone || referral.patient.phone,
+        patient_national_id: externalDemographics.patient_national_id || referral.patient.nationalId,
+        patient_address: externalDemographics.patient_address || referral.patient.address,
         ...formattedMedicalData
       },
       _external_source: formattedMedicalData._external_source
@@ -277,19 +340,24 @@ export class ReferralService {
     const receivingHospitalName = referral.receivingHospital.name;
 
     console.log(`[DEBUG] Looking up responding hospital patient data by nationalId=${nationalId} for hospital=${receivingHospitalName}`);
-    const externalMedicalData = await getPatientMedicalDataFromExternalDB(
+    let externalMedicalData = await getPatientMedicalDataFromExternalDB(
       nationalId,
       receivingHospitalName
     );
+
+    if (!externalMedicalData) {
+      externalMedicalData = await getPatientMedicalDataUsingPatientService(referral.patient, receivingHospitalName);
+    }
 
     if (!externalMedicalData) {
       throw new AppError(404, `Patient with national ID ${nationalId} not found in ${receivingHospitalName} database`);
     }
 
     const formattedMedicalData = formatMedicalData(externalMedicalData);
+    const externalDemographics = formatExternalDemographics(externalMedicalData.patient);
 
     return {
-      nationalId,
+      nationalId: externalDemographics.patient_national_id || nationalId,
       hospital: receivingHospitalName,
       ...formattedMedicalData,
     };
