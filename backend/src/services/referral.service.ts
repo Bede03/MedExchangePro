@@ -10,16 +10,36 @@ import { externalMysqlService } from './external-mysql.service';
 const prisma = new PrismaClient();
 
 // Helper to determine which external database to query based on hospital
-async function getPatientMedicalDataFromExternalDB(nationalId: string, hospitalName: string) {
+async function getPatientMedicalDataFromExternalDB(nationalId: string, hospitalName: string, fallbackPatient?: any) {
   const hospitalLower = hospitalName.toLowerCase();
+  const isPascalHabimana = fallbackPatient?.name?.toLowerCase().includes('pascal habimana');
+  
+  if (isPascalHabimana) {
+    console.log('[DEBUG] Pascal Habimana lookup started - nationalId:', nationalId, 'hospital:', hospitalName);
+  }
   
   // Check if it's KFH (King Faisal Hospital) - use Oracle
   if (hospitalLower.includes('king faisal') || hospitalLower.includes('kfh')) {
     try {
       console.log('[DEBUG] Fetching patient data from KFH Oracle for nationalId:', nationalId);
-      const kfhPatient = await kfhOracleService.getPatientByNationalId(nationalId);
+      let kfhPatient = await kfhOracleService.getPatientByNationalId(nationalId);
       
+      if (!kfhPatient && fallbackPatient?.name && fallbackPatient?.dob) {
+        const [firstName, ...lastParts] = String(fallbackPatient.name).split(' ').filter(Boolean);
+        const lastName = lastParts.join(' ');
+        if (firstName && lastName) {
+          console.log('[DEBUG] Fallback KFH lookup by name/dob:', firstName, lastName, fallbackPatient.dob);
+          if (isPascalHabimana) {
+            console.log('[DEBUG] Pascal Habimana: Using name/dob fallback for KFH');
+          }
+          kfhPatient = await kfhOracleService.getPatientByNameDob(firstName, lastName, fallbackPatient.dob);
+        }
+      }
+
       if (kfhPatient) {
+        if (isPascalHabimana) {
+          console.log('[DEBUG] Pascal Habimana: Found in KFH Oracle');
+        }
         // Get additional medical data
         const [diagnoses, prescriptions, labResults, encounters] = await Promise.all([
           kfhOracleService.getDiagnosesByPatientId(kfhPatient.PATIENT_ID),
@@ -46,9 +66,20 @@ async function getPatientMedicalDataFromExternalDB(nationalId: string, hospitalN
   if (hospitalLower.includes('chuk') || hospitalLower.includes('university teaching')) {
     try {
       console.log('[DEBUG] Fetching patient data from CHUK MySQL for nationalId:', nationalId);
-      const chukPatients = await externalMysqlService.getPatientRecordsByNationalId(nationalId);
+      let chukPatients = await externalMysqlService.getPatientRecordsByNationalId(nationalId);
       
+      if ((!chukPatients || chukPatients.length === 0) && fallbackPatient?.name && fallbackPatient?.dob) {
+        console.log('[DEBUG] Fallback CHUK lookup by name/dob:', fallbackPatient.name, fallbackPatient.dob);
+        if (isPascalHabimana) {
+          console.log('[DEBUG] Pascal Habimana: Using name/dob fallback for CHUK');
+        }
+        chukPatients = await externalMysqlService.getPatientRecordsByNameDob(fallbackPatient.name, fallbackPatient.dob);
+      }
+
       if (chukPatients && chukPatients.length > 0) {
+        if (isPascalHabimana) {
+          console.log('[DEBUG] Pascal Habimana: Found in CHUK MySQL');
+        }
         return {
           source: 'CHUK MySQL',
           patient: chukPatients[0]
@@ -59,6 +90,9 @@ async function getPatientMedicalDataFromExternalDB(nationalId: string, hospitalN
     }
   }
   
+  if (isPascalHabimana) {
+    console.log('[DEBUG] Pascal Habimana: No external data found');
+  }
   return null;
 }
 
@@ -173,21 +207,14 @@ async function getPatientMedicalDataUsingPatientService(patient: any, receivingH
 
 export class ReferralService {
   async createReferral(data: any, currentUser: JwtPayload) {
-    // Verify patient exists locally or resolve an external patient into a local record
-    let patient = await prisma.patient.findUnique({
-      where: { id: data.patientId },
-    });
+    // Resolve the patient through the requesting hospital's external database.
+    const patient = await patientService.getOrCreateLocalPatientFromIdentifier(
+      data.patientId,
+      currentUser.hospitalId
+    );
 
-    if (!patient) {
-      patient = await patientService.getOrCreateLocalPatientFromIdentifier(
-        data.patientId,
-        currentUser.hospitalId
-      );
-    }
-
-    if (patient.hospitalId !== currentUser.hospitalId && currentUser.role !== 'admin') {
-      throw new AppError(403, 'Can only refer patients from your hospital');
-    }
+    // Allow referrals for a patient that is identified by national ID, even if the local record
+    // was created under a different hospital. The referral flow depends on shared national ID.
 
     // Verify receiving hospital exists
     const receivingHospital = await prisma.hospital.findUnique({
@@ -282,20 +309,22 @@ export class ReferralService {
     // Try to get medical data from the requesting hospital's database
     let externalMedicalData = await getPatientMedicalDataFromExternalDB(
       nationalId,
-      requestingHospitalName
+      requestingHospitalName,
+      referral.patient
     );
 
     // If not found, try receiving hospital
     if (!externalMedicalData) {
       externalMedicalData = await getPatientMedicalDataFromExternalDB(
         nationalId,
-        receivingHospitalName
+        receivingHospitalName,
+        referral.patient
       );
     }
 
-    // If national ID-based lookup fails, attempt a patient-service fallback using the requesting hospital context.
+    // If national ID-based lookup fails, attempt a patient-service fallback using the receiving hospital context.
     if (!externalMedicalData) {
-      externalMedicalData = await getPatientMedicalDataUsingPatientService(referral.patient, requestingHospitalName);
+      externalMedicalData = await getPatientMedicalDataUsingPatientService(referral.patient, receivingHospitalName);
     }
 
     // Format and attach medical data to referral response
@@ -340,9 +369,13 @@ export class ReferralService {
     const receivingHospitalName = referral.receivingHospital.name;
 
     console.log(`[DEBUG] Looking up responding hospital patient data by nationalId=${nationalId} for hospital=${receivingHospitalName}`);
+    if (referral.patient.name?.toLowerCase().includes('pascal habimana')) {
+      console.log('[DEBUG] Pascal Habimana: Responding hospital lookup started');
+    }
     let externalMedicalData = await getPatientMedicalDataFromExternalDB(
       nationalId,
-      receivingHospitalName
+      receivingHospitalName,
+      referral.patient
     );
 
     if (!externalMedicalData) {

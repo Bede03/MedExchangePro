@@ -298,6 +298,7 @@ export const apiClient = {
       if (data.email) updatePayload.email = data.email;
       if (data.password) updatePayload.password = data.password;
       if (data.role) updatePayload.role = data.role;
+      if (typeof data.active === 'boolean') updatePayload.isActive = data.active;
       
       console.log('📤 Sending updatePayload:', updatePayload);
       

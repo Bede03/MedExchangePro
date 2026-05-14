@@ -179,6 +179,23 @@ export class KFHOracleService {
     }
   }
 
+  async getPatientByNameDob(firstName: string, lastName: string, dob: string): Promise<KFHPatient | null> {
+    const connection = await getOracleConnection();
+    try {
+      const result = await connection.execute(
+        `SELECT * FROM patients WHERE LOWER(FIRST_NAME) = LOWER(:firstName)
+          AND LOWER(LAST_NAME) = LOWER(:lastName)
+          AND TO_CHAR(DOB, 'YYYY-MM-DD') = :dob`,
+        { firstName, lastName, dob },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const rows = result.rows as KFHPatient[] | undefined;
+      return rows?.[0] ?? null;
+    } finally {
+      await connection.close();
+    }
+  }
+
   async getStaff(limit: number = 100): Promise<KFHStaff[]> {
     const connection = await getOracleConnection();
     try {

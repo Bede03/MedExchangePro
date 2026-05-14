@@ -16,5 +16,11 @@
             "connectionTimeout": 30,
             "askForPassword": true
         }
-    ]
+    ],
+    "chat.tools.terminal.autoApprove": {
+        "/^cmd /c \"del /f /q node_modules\\\\\\.prisma\\\\client\\\\query_engine-windows\\.dll\\.node\" ; if exist node_modules\\\\\\.prisma\\\\client\\\\query_engine-windows\\.dll\\.node \\(echo DELETE_FAILED\\) else \\(echo DELETED\\)$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

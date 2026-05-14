@@ -32,6 +32,7 @@ export function useMockData() {
           role: u.role,
           hospital_id: u.hospitalId,
           created_at: u.createdAt,
+          active: u.isActive ?? true,
         }));
         setUsers(mappedUsers);
 

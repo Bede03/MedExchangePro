@@ -46,6 +46,36 @@ export class ExternalMysqlService {
     return rows as ExternalPatientRecord[];
   }
 
+  async getPatientRecordsByNameDob(fullName: string, dob: string) {
+    console.log('[DEBUG] CHUK MySQL: Querying for name/dob:', fullName, dob);
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT
+        p.patient_id AS id,
+        CONCAT(p.first_name, ' ', p.last_name) AS name,
+        p.dob,
+        p.national_id,
+        p.phone,
+        p.blood_type,
+        COALESCE(
+          GROUP_CONCAT(DISTINCT d.description ORDER BY d.confirmed_at DESC SEPARATOR '; '),
+          'No diagnoses found'
+        ) AS diagnosis,
+        'CHUK Demo' AS source_system
+      FROM patients p
+      LEFT JOIN visits v ON v.patient_id = p.patient_id
+      LEFT JOIN encounters e ON e.visit_id = v.visit_id
+      LEFT JOIN diagnoses d ON d.encounter_id = e.encounter_id
+      WHERE CONCAT(p.first_name, ' ', p.last_name) = ?
+        AND p.dob = ?
+      GROUP BY p.patient_id
+      LIMIT 1`,
+      [fullName, dob]
+    );
+
+    console.log('[DEBUG] CHUK MySQL name/dob rows:', rows.length);
+    return rows as ExternalPatientRecord[];
+  }
+
   async getHospitalLookup() {
     const [rows] = await pool.query<RowDataPacket[]>(
       'SELECT id, name, address, phone FROM external_hospitals LIMIT 100',

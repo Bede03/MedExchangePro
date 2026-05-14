@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword, comparePassword, isValidEmail } from '../utils/auth';
-import { generateToken, JwtPayload } from '../utils/jwt';
+import { generateToken } from '../utils/jwt';
 import { AppError } from '../utils/errors';
 
 const prisma = new PrismaClient();
@@ -13,6 +13,10 @@ export class AuthService {
 
     if (!user || !(await comparePassword(password, user.password))) {
       throw new AppError(401, 'Invalid email or password');
+    }
+
+    if (!user.isActive) {
+      throw new AppError(403, 'Account is not active. Please wait for admin approval.');
     }
 
     const token = generateToken({
@@ -73,14 +77,8 @@ export class AuthService {
         password: hashedPassword,
         role: role as any,
         hospitalId,
+        isActive: false,
       },
-    });
-
-    const token = generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      hospitalId: user.hospitalId,
     });
 
     return {
@@ -91,7 +89,6 @@ export class AuthService {
         role: user.role,
         hospitalId: user.hospitalId,
       },
-      token,
     };
   }
 

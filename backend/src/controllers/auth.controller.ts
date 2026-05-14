@@ -52,7 +52,10 @@ export const signup = async (req: Request, res: Response) => {
 
     res.status(201).json({
       success: true,
-      data: result,
+      data: {
+        user: result.user,
+        message: 'Account created and pending admin approval.',
+      },
     });
   } catch (error: any) {
     res.status(error.statusCode || 500).json({

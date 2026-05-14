@@ -132,43 +132,41 @@ export class PatientService {
     return hospital?.id ?? 'kfh';
   }
 
-  async getOrCreateLocalPatientFromIdentifier(identifier: string, hospitalId: string) {
-    const localPatient = await prisma.patient.findUnique({
-      where: { id: identifier },
+  private async resolveExternalPatientForHospital(identifier: string, hospitalId: string) {
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
     });
-    if (localPatient) return localPatient;
-
-    const kfhHospitalId = await this.findKFHHospitalId();
-    if (hospitalId === kfhHospitalId) {
-      const externalPatient = await this.getPatientById(identifier, hospitalId);
-      if (!externalPatient) {
-        throw new AppError(404, 'Patient not found');
-      }
-
-      const existingByNational = await prisma.patient.findUnique({
-        where: { nationalId: externalPatient.nationalId },
-      });
-      if (existingByNational) return existingByNational;
-
-      const patient = await prisma.patient.create({
-        data: {
-          id: externalPatient.id,
-          name: externalPatient.name,
-          gender: normalizeGender(externalPatient.gender),
-          dob: externalPatient.dob,
-          phone: externalPatient.phone,
-          address: externalPatient.address,
-          nationalId: externalPatient.nationalId,
-          hospitalId,
-        },
-      });
-
-      return patient;
+    if (!hospital) {
+      throw new AppError(404, 'Hospital not found');
     }
 
-    const chukRow = await this.getChukPatientByIdentifier(identifier);
+    const normalizedIdentifier = String(identifier || '').trim();
+    const isKFH = hospital.name.toLowerCase().includes('king faisal');
+
+    console.log(`[DEBUG] Referral creation: Resolving patient ${normalizedIdentifier} from ${hospital.name} external database`);
+
+    if (isKFH) {
+      const numericId = Number(normalizedIdentifier);
+      let kfhPatient = null;
+
+      if (!Number.isNaN(numericId) && Number.isInteger(numericId)) {
+        kfhPatient = await kfhOracleService.getPatientById(numericId);
+      }
+
+      if (!kfhPatient) {
+        kfhPatient = await kfhOracleService.getPatientByNationalId(normalizedIdentifier);
+      }
+
+      if (!kfhPatient) {
+        throw new AppError(404, 'Patient not found in KFH database');
+      }
+
+      return normalizeKFHPatient(kfhPatient, hospitalId, hospital.name);
+    }
+
+    const chukRow = await this.getChukPatientByIdentifier(normalizedIdentifier);
     if (!chukRow) {
-      throw new AppError(404, 'Patient not found');
+      throw new AppError(404, 'Patient not found in CHUK database');
     }
 
     const nationalId = String(chukRow.national_id ?? '').trim();
@@ -176,26 +174,65 @@ export class PatientService {
       throw new AppError(400, 'CHUK patient is missing a national ID');
     }
 
-    const existingByNational = await prisma.patient.findUnique({
-      where: { nationalId },
-    });
-    if (existingByNational) return existingByNational;
+    return normalizeChukPatient(chukRow, hospitalId, hospital.name);
+  }
 
-    const firstName = String(chukRow.first_name ?? '').trim();
-    const lastName = String(chukRow.last_name ?? '').trim();
-    const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown Patient';
-    const gender = ['male', 'female', 'other'].includes(String(chukRow.gender ?? '').toLowerCase())
-      ? String(chukRow.gender).toLowerCase()
-      : 'other';
+  async getOrCreateLocalPatientFromIdentifier(identifier: string, hospitalId: string) {
+    const normalizedIdentifier = String(identifier || '').trim();
+    const localPatient = await prisma.patient.findUnique({
+      where: { id: normalizedIdentifier },
+    });
+
+    // If the local patient exists for the current hospital, refresh it from external data.
+    if (localPatient && localPatient.hospitalId === hospitalId) {
+      try {
+        const externalPatient = await this.resolveExternalPatientForHospital(
+          localPatient.nationalId || normalizedIdentifier,
+          hospitalId
+        );
+
+        return await prisma.patient.update({
+          where: { id: localPatient.id },
+          data: {
+            name: externalPatient.name,
+            gender: normalizeGender(externalPatient.gender),
+            dob: externalPatient.dob,
+            phone: externalPatient.phone,
+            address: externalPatient.address,
+            nationalId: externalPatient.nationalId,
+          },
+        });
+      } catch (error: any) {
+        // If external lookup fails, still allow existing local patient if it's owned by the hospital.
+        return localPatient;
+      }
+    }
+
+    // Use national ID from an existing local record if the record belongs to a different hospital.
+    const lookupIdentifier = localPatient?.nationalId || normalizedIdentifier;
+    const externalPatient = await this.resolveExternalPatientForHospital(lookupIdentifier, hospitalId);
+
+    // Check if a patient with this national ID already exists (regardless of hospital).
+    const existingByNationalId = await prisma.patient.findUnique({
+      where: { nationalId: externalPatient.nationalId },
+    });
+    if (existingByNationalId) {
+      // If it belongs to the current hospital, return it.
+      if (existingByNationalId.hospitalId === hospitalId) {
+        return existingByNationalId;
+      }
+      // If it belongs to a different hospital, return it as-is (cross-hospital patient).
+      return existingByNationalId;
+    }
 
     const patient = await prisma.patient.create({
       data: {
-        name,
-        gender: gender as any,
-        dob: String(chukRow.dob ?? ''),
-        phone: String(chukRow.phone ?? ''),
-        address: String(chukRow.address ?? ''),
-        nationalId,
+        name: externalPatient.name,
+        gender: normalizeGender(externalPatient.gender),
+        dob: externalPatient.dob,
+        phone: externalPatient.phone,
+        address: externalPatient.address,
+        nationalId: externalPatient.nationalId,
         hospitalId,
       },
     });

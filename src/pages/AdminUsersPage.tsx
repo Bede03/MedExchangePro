@@ -37,22 +37,15 @@ export function AdminUsersPage() {
     return users.filter((u) => u.hospital_id === user.hospital_id);
   }, [users, user]);
 
-  const [activeMap, setActiveMap] = useState<Record<string, boolean>>(() =>
-    hospitalUsers.reduce((acc, u, idx) => {
-      acc[u.id] = true;
-      return acc;
-    }, {} as Record<string, boolean>)
-  );
-
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const userRows = useMemo<UserWithMeta[]>(() => {
     return hospitalUsers.map((u, idx) => ({
       ...u,
       joined_at: new Date(2026, 2, 4 + idx).toISOString(),
-      active: activeMap[u.id] ?? true,
+      active: u.active ?? true,
     }));
-  }, [hospitalUsers, activeMap]);
+  }, [hospitalUsers]);
 
   const editingUser = useMemo(
     () => hospitalUsers.find((u) => u.id === editingUserId) ?? null,
@@ -67,12 +60,16 @@ export function AdminUsersPage() {
     if (editingUser) {
       setEditFullName(editingUser.full_name);
       setEditRole(editingUser.role);
-      setEditActive(activeMap[editingUser.id] ?? true);
+      setEditActive(editingUser.active ?? true);
     }
-  }, [editingUser, activeMap]);
+  }, [editingUser]);
 
-  const toggleActive = (id: string) => {
-    setActiveMap((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleActive = async (id: string, current: boolean) => {
+    try {
+      await updateUser(id, { active: !current });
+    } catch (error) {
+      console.error('Failed to update user active flag', error);
+    }
   };
 
   return (
@@ -189,7 +186,7 @@ export function AdminUsersPage() {
                         type="checkbox"
                         className="peer sr-only"
                         checked={row.active}
-                        onChange={() => toggleActive(row.id)}
+                        onChange={() => toggleActive(row.id, row.active)}
                       />
                       <span className="h-5 w-10 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600" />
                       <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
@@ -301,9 +298,8 @@ export function AdminUsersPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    updateUser(editingUser.id, { full_name: editFullName, role: editRole });
-                    setActiveMap((prev) => ({ ...prev, [editingUser.id]: editActive }));
+                  onClick={async () => {
+                    await updateUser(editingUser.id, { full_name: editFullName, role: editRole, active: editActive });
                     setEditingUserId(null);
                   }}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"

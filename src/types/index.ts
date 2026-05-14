@@ -6,6 +6,8 @@ export interface User {
   email: string;
   role: UserRole;
   hospital_id: string;
+  created_at?: string;
+  active?: boolean;
 }
 
 export interface Hospital {

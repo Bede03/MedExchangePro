@@ -17,11 +17,13 @@ export function SignupPage() {
   const [hospitalId, setHospitalId] = useState(hospitals[0]?.id ?? '');
   const [role, setRole] = useState<'admin' | 'clinician' | 'hospital_staff'>('clinician');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -30,8 +32,12 @@ export function SignupPage() {
     
     setLoading(true);
     try {
-      await signup(fullName, email, password, role, hospitalId);
-      navigate('/dashboard', { replace: true });
+      const message = await signup(fullName, email, password, role, hospitalId);
+      setSuccessMessage(message ?? 'Account created. Awaiting admin approval.');
+      setFullName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -103,9 +109,10 @@ export function SignupPage() {
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="clinician">Clinician</option>
-              <option value="admin">Admin</option>
               <option value="hospital_staff">Hospital Staff</option>
+              <option value="registrar">Registrar</option>
             </select>
+            <p className="mt-2 text-xs text-slate-500">Admin accounts must be created and approved by an existing administrator.</p>
           </div>
 
           {/* Email */}
@@ -182,6 +189,7 @@ export function SignupPage() {
 
           {/* Error Message */}
           {error ? <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</p> : null}
+          {successMessage ? <p className="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{successMessage}</p> : null}
 
           {/* Submit Button */}
           <button

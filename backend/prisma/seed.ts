@@ -65,6 +65,7 @@ async function main() {
       password: await hashPassword('password123'),
       role: 'admin',
       hospitalId: hospital2.id,
+      isActive: true,
     },
   });
 
@@ -75,6 +76,7 @@ async function main() {
       password: await hashPassword('password123'),
       role: 'clinician',
       hospitalId: hospital1.id,
+      isActive: true,
     },
   });
 
@@ -85,6 +87,7 @@ async function main() {
       password: await hashPassword('password123'),
       role: 'hospital_staff',
       hospitalId: hospital1.id,
+      isActive: true,
     },
   });
 

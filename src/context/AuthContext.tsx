@@ -135,24 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
       const response = await apiClient.auth.signup(full_name, email, password, role, hospital_id);
-      
+
       if (response.success && response.data) {
-        const { user: userData, token } = response.data;
-
-        // Convert backend field names to frontend format
-        const formattedUser: User = {
-          id: userData.id,
-          full_name: userData.fullName,
-          email: userData.email,
-          role: userData.role,
-          hospital_id: userData.hospitalId,
-        };
-
-        // Save token and normalized user
-        localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
-        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(formattedUser));
-
-        setUser(formattedUser);
+        return response.data.message;
       }
     } catch (err: any) {
       const message = err.message || 'Signup failed';
