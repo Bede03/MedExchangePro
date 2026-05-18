@@ -51,6 +51,10 @@ export function ReferralDetailsPage() {
   const [loadingRespondingData, setLoadingRespondingData] = useState(false);
   const [respondingHospitalDataError, setRespondingHospitalDataError] = useState<string | null>(null);
 
+  const TABS = ['Referral Details', 'Shared Medical Info'] as const;
+  type ReferralTab = (typeof TABS)[number];
+  const [activeTab, setActiveTab] = useState<ReferralTab>('Referral Details');
+
 
   // Calculate what data will be shared
   const sharedDataSummary = useMemo(() => {
@@ -491,6 +495,25 @@ export function ReferralDetailsPage() {
         </div>
       </header>
 
+      <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                activeTab === tab ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+              }`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === 'Referral Details' && (
+      <>
       {/* Awaiting Response Message */}
       {user && user.hospital_id === referral.requesting_hospital_id && referral.status === 'pending' ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-5 py-4">
@@ -526,7 +549,9 @@ export function ReferralDetailsPage() {
       {/* Patient Data Shared Message */}
       {(user && user.hospital_id === referral.receiving_hospital_id && referral.status === 'completed') ? (
         <div className="rounded-lg border border-slate-200 bg-sky-50 px-5 py-4">
-          <p className="text-sm font-medium text-sky-800">Patient data has been shared with the requesting hospital.</p>
+          <p className="text-sm font-medium text-sky-800">
+            Patient data has been shared with {hospitalMap.get(referral.requesting_hospital_id) ?? 'the requesting hospital'}.
+          </p>
         </div>
       ) : null}
 
@@ -620,7 +645,7 @@ export function ReferralDetailsPage() {
                   <Check className="h-3 w-3 text-white" />
                 </div>
                 <p className="text-sm font-medium text-green-900">
-                  Referral accepted. You may now share patient data with the requesting hospital.
+                  Referral accepted. You may now share patient data with {hospitalMap.get(referral.requesting_hospital_id) ?? 'the requesting hospital'}.
                 </p>
               </div>
               <div className="flex gap-3">
@@ -773,74 +798,6 @@ export function ReferralDetailsPage() {
           )}
         </div>
 
-        {/* Shared Medical Records Section */}
-        {sharedRecords && (
-          <div className="mt-6 rounded-lg border border-slate-200 bg-emerald-50 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Shared Medical Records</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Medical data shared by {hospitalMap.get(referral.receiving_hospital_id) ?? 'receiving hospital'}
-                </p>
-              </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
-                Records Shared
-              </span>
-            </div>
-
-            <div className="mt-6 grid gap-6 md:grid-cols-2">
-              {sharedRecords.testResults && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Test Results</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.testResults}</p>
-                </div>
-              )}
-              {sharedRecords.medications && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medications</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.medications}</p>
-                </div>
-              )}
-              {sharedRecords.allergies && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Allergies</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.allergies}</p>
-                </div>
-              )}
-              {sharedRecords.medicalHistory && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medical History</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.medicalHistory}</p>
-                </div>
-              )}
-              {sharedRecords.vitalsLastRecorded && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vitals</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.vitalsLastRecorded}</p>
-                </div>
-              )}
-              {sharedRecords.clinicalNotes && (
-                <div className="md:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Clinical Notes</p>
-                  <p className="mt-1 text-sm text-slate-900">{sharedRecords.clinicalNotes}</p>
-                </div>
-              )}
-              {(sharedRecords.patientDocuments || referral.patient_documents) && (
-                <div className="md:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient Documents</p>
-                  <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{sharedRecords.patientDocuments || referral.patient_documents}</p>
-                </div>
-              )}
-            </div>
-
-            <p className="mt-4 text-xs text-slate-500">
-              Shared on: {sharedRecords.createdAt ? formatDate(sharedRecords.createdAt) : 'Date unknown'}
-            </p>
-          </div>
-        )}
-
-
-
         <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-6">
           <p className="text-sm font-semibold text-slate-900">Referral Timeline</p>
           <div className="mt-4 space-y-4">
@@ -859,8 +816,78 @@ export function ReferralDetailsPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* Confirm Patient Data Sharing Modal */}
+      {activeTab === 'Shared Medical Info' && (
+        <div className="mt-6 space-y-6">
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
+            {sharedRecords ? (
+              <div className="mt-6 rounded-lg border border-slate-200 bg-emerald-50 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Shared Medical Records</p>
+                    <p className="mt-1 text-xs text-slate-500">Medical data shared by {hospitalMap.get(referral.receiving_hospital_id) ?? 'receiving hospital'}</p>
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">Records Shared</span>
+                </div>
+
+                <div className="mt-6 grid gap-6 md:grid-cols-2">
+                  {sharedRecords.testResults && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Test Results</p>
+                      <p className="mt-1 text-sm text-slate-900">{sharedRecords.testResults}</p>
+                    </div>
+                  )}
+                  {sharedRecords.medications && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medications</p>
+                      <p className="mt-1 text-sm text-slate-900">{sharedRecords.medications}</p>
+                    </div>
+                  )}
+                  {sharedRecords.allergies && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Allergies</p>
+                      <p className="mt-1 text-sm text-slate-900">{sharedRecords.allergies}</p>
+                    </div>
+                  )}
+                  {sharedRecords.medicalHistory && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medical History</p>
+                      <p className="mt-1 text-sm text-slate-900">{sharedRecords.medicalHistory}</p>
+                    </div>
+                  )}
+                  {sharedRecords.vitalsLastRecorded && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vitals</p>
+                      <p className="mt-1 text-sm text-slate-900">{sharedRecords.vitalsLastRecorded}</p>
+                    </div>
+                  )}
+                  {sharedRecords.clinicalNotes && (
+                    <div className="md:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Clinical Notes</p>
+                      <p className="mt-1 text-sm text-slate-900">{sharedRecords.clinicalNotes}</p>
+                    </div>
+                  )}
+                  {(sharedRecords.patientDocuments || referral.patient_documents) && (
+                    <div className="md:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient Documents</p>
+                      <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{sharedRecords.patientDocuments || referral.patient_documents}</p>
+                    </div>
+                  )}
+                </div>
+
+                <p className="mt-4 text-xs text-slate-500">Shared on: {sharedRecords.createdAt ? formatDate(sharedRecords.createdAt) : 'Date unknown'}</p>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">
+                No shared medical records available for this patient.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {showConfirmModal && canApproveOrReject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg">

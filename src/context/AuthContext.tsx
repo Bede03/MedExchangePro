@@ -68,8 +68,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (token && storedUser) {
         try {
           setIsLoading(true);
-          await apiClient.auth.verify();
-          // Verification passed, keep user logged in
+          const res = await apiClient.auth.verify();
+          // If the server returned a fresh user payload, normalize and replace local user
+          if (res && res.success && res.data) {
+            const serverUser = res.data;
+            const formattedUser: User = {
+              id: serverUser.id,
+              full_name: serverUser.fullName || serverUser.full_name || '',
+              email: serverUser.email,
+              role: serverUser.role,
+              hospital_id: serverUser.hospitalId || serverUser.hospital_id,
+            };
+            setUser(formattedUser);
+            localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(formattedUser));
+          }
         } catch (err) {
           // Verification failed, clear everything
           localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY);

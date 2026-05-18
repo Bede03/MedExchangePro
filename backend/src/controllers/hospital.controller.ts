@@ -152,3 +152,23 @@ export const getHospitalDepartmentsEndpoint = async (req: Request, res: Response
     });
   }
 };
+
+export const getHospitalExternalDepartmentsEndpoint = async (req: Request, res: Response) => {
+  try {
+    const departments = await hospitalService.getHospitalExternalDepartments(req.params.id);
+
+    res.json({
+      success: true,
+      data: {
+        hospitalId: req.params.id,
+        departments: departments.map((d: any) => d.departmentName || d.category),
+        count: departments.length,
+      },
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

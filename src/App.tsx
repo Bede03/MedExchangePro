@@ -7,6 +7,9 @@ import { PatientDetailsPage } from './pages/PatientDetailsPage';
 import { ReferralsPage } from './pages/ReferralsPage';
 import { NewReferralPage } from './pages/NewReferralPage';
 import { ReferralDetailsPage } from './pages/ReferralDetailsPage';
+import { TransfersPage } from './pages/TransfersPage';
+import { NewTransferPage } from './pages/NewTransferPage';
+import { TransferDetailsPage } from './pages/TransferDetailsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AdminPanelPage } from './pages/AdminPanelPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
@@ -36,6 +39,9 @@ export default function App() {
         <Route path="/referrals" element={<ReferralsPage />} />
         <Route path="/referrals/new" element={<NewReferralPage />} />
         <Route path="/referrals/:id" element={<ReferralDetailsPage />} />
+        <Route path="/transfers" element={<TransfersPage />} />
+        <Route path="/transfers/new" element={<NewTransferPage />} />
+        <Route path="/transfers/:id" element={<TransferDetailsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/admin" element={<AdminPanelPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />

@@ -256,6 +256,50 @@ export const apiClient = {
       if (!response.ok) throw new Error('Failed to fetch hospital departments');
       return response.json();
     },
+
+    getExternalDepartments: async (id: string) => {
+      const response = await fetch(`${API_URL}/api/hospitals/${id}/external-departments`, {
+        headers: apiClient.getHeaders(true),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const message = body?.message || 'Failed to fetch external hospital departments';
+        throw new Error(message);
+      }
+
+      return response.json();
+    },
+
+    // Get departments with automatic fallback on 404
+    getDepartmentsWithFallback: async (id: string, onRefresh?: () => Promise<void>) => {
+      try {
+        const response = await fetch(`${API_URL}/api/hospitals/${id}/departments`, {
+          headers: apiClient.getHeaders(true),
+        });
+
+        // If we got a 404, the hospital_id might be stale - refresh and retry
+        if (response.status === 404 && onRefresh) {
+          console.warn(`Hospital ${id} not found (404). Refreshing user/hospitals and retrying...`);
+          
+          // Call the refresh callback to update user and hospitals
+          await onRefresh();
+          
+          // Retry the request once with potentially updated data
+          const retryResponse = await fetch(`${API_URL}/api/hospitals/${id}/departments`, {
+            headers: apiClient.getHeaders(true),
+          });
+
+          if (!retryResponse.ok) throw new Error('Failed to fetch hospital departments after refresh');
+          return retryResponse.json();
+        }
+
+        if (!response.ok) throw new Error('Failed to fetch hospital departments');
+        return response.json();
+      } catch (error) {
+        throw error;
+      }
+    },
   },
 
   // User endpoints
@@ -418,6 +462,77 @@ export const apiClient = {
       });
 
       if (!response.ok) throw new Error('Failed to delete notification');
+      return response.json();
+    },
+  },
+
+  // Transfer endpoints
+  transfers: {
+    create: async (data: any) => {
+      const response = await fetch(`${API_URL}/api/transfers`, {
+        method: 'POST',
+        headers: apiClient.getHeaders(true),
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to create transfer';
+        try {
+          const errorBody = await response.json();
+          if (errorBody?.message) message = errorBody.message;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(message);
+      }
+      return response.json();
+    },
+
+    list: async () => {
+      const response = await fetch(`${API_URL}/api/transfers`, {
+        headers: apiClient.getHeaders(true),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch transfers');
+      return response.json();
+    },
+
+    get: async (id: string) => {
+      const response = await fetch(`${API_URL}/api/transfers/${id}`, {
+        headers: apiClient.getHeaders(true),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch transfer');
+      return response.json();
+    },
+
+    updateStatus: async (id: string, status: string) => {
+      const response = await fetch(`${API_URL}/api/transfers/${id}/status`, {
+        method: 'PUT',
+        headers: apiClient.getHeaders(true),
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update transfer status');
+      return response.json();
+    },
+
+    delete: async (id: string) => {
+      const response = await fetch(`${API_URL}/api/transfers/${id}`, {
+        method: 'DELETE',
+        headers: apiClient.getHeaders(true),
+      });
+
+      if (!response.ok) throw new Error('Failed to delete transfer');
+      return response.json();
+    },
+
+    stats: async () => {
+      const response = await fetch(`${API_URL}/api/transfers/stats`, {
+        headers: apiClient.getHeaders(true),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch transfer stats');
       return response.json();
     },
   },

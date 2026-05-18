@@ -10,6 +10,7 @@ import { apiClient } from '../services/api';
 type SortOption = 'patient_name' | 'hospital' | 'submission_date' | 'status';
 type SortDirection = 'asc' | 'desc';
 type StatusSort = 'pending' | 'approved' | 'completed' | 'rejected';
+type ReferralTab = 'sent' | 'received';
 
 export function ReferralsPage() {
   const { hospitals } = useMockData();
@@ -22,6 +23,7 @@ export function ReferralsPage() {
   const [statusSort, setStatusSort] = useState<StatusSort>('pending');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [isSortDetailPopupOpen, setIsSortDetailPopupOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<ReferralTab>('sent');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -80,7 +82,13 @@ export function ReferralsPage() {
         ref.receiving_hospital_id === user.hospital_id
     );
 
-    let result = allowedReferrals.filter((ref) => {
+    const visibleReferrals = allowedReferrals.filter((ref) =>
+      selectedTab === 'sent'
+        ? ref.requesting_hospital_id === user.hospital_id
+        : ref.receiving_hospital_id === user.hospital_id
+    );
+
+    let result = visibleReferrals.filter((ref) => {
       if (!normalized) return true;
 
       const from = hospitalMap.get(ref.requesting_hospital_id)?.toLowerCase() ?? '';
@@ -136,7 +144,7 @@ export function ReferralsPage() {
     });
 
     return sorted;
-  }, [referrals, search, hospitalMap, sortBy, sortDirection, statusSort, user, isLoading]);
+  }, [referrals, search, hospitalMap, sortBy, sortDirection, statusSort, user, isLoading, selectedTab]);
 
   // Pagination logic
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -160,6 +168,30 @@ export function ReferralsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Referrals</h1>
           <p className="text-sm text-slate-500">Track and manage patient referrals</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedTab('sent')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                selectedTab === 'sent'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Sent
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTab('received')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                selectedTab === 'received'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Received
+            </button>
+          </div>
         </div>
 
         <Link

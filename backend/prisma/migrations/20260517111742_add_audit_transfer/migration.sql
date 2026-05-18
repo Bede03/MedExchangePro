@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "audit_entity_type" ADD VALUE 'Transfer';

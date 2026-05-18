@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/errors';
 import { JwtPayload } from '../utils/jwt';
+import { kfhOracleService } from './kfh-oracle.service.js';
 
 const prisma = new PrismaClient();
 
@@ -106,6 +107,38 @@ export class HospitalService {
 
     if (!hospital) {
       throw new AppError(404, 'Hospital not found');
+    }
+
+    const departments = await prisma.hospitalDepartment.findMany({
+      where: { hospitalId: id },
+      select: {
+        id: true,
+        category: true,
+        departmentName: true,
+      },
+    });
+
+    return departments;
+  }
+
+  async getHospitalExternalDepartments(id: string) {
+    const hospital = await prisma.hospital.findUnique({
+      where: { id },
+    });
+
+    if (!hospital) {
+      throw new AppError(404, 'Hospital not found');
+    }
+
+    const isKfh = hospital.id === 'hosp-02' || hospital.name.toLowerCase().includes('king faisal');
+
+    if (isKfh) {
+      const kfhDepartments = await kfhOracleService.getDepartments(100);
+      return kfhDepartments.map((dept) => ({
+        id: `kfh-${dept.dept_id}`,
+        category: dept.category,
+        departmentName: dept.name,
+      }));
     }
 
     const departments = await prisma.hospitalDepartment.findMany({

@@ -30,7 +30,7 @@ import { StatCard } from '../components/UI/StatCard';
 import { StatusBadge } from '../components/UI/StatusBadge';
 import { apiClient } from '../services/api';
 
-type DateRange = 'all' | '7days' | '30days' | '90days';
+type DateRange = 'all' | '7days' | '30days' | '90days' | 'custom';
 type StatusFilter = 'all' | 'pending' | 'approved' | 'completed' | 'rejected';
 
 // Chart color definitions
@@ -54,6 +54,8 @@ export function ReportsPage() {
   const { user } = useAuth();
   const { patients, referrals, hospitals } = useMockData();
   const [dateRange, setDateRange] = useState<DateRange>('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
@@ -62,6 +64,18 @@ export function ReportsPage() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [departmentsError, setDepartmentsError] = useState<string | null>(null);
+
+  // Refresh callback for fallback: refreshes user and hospitals list
+  const handleRefreshForDepartments = async () => {
+    try {
+      // Refresh the current user from the server (updates hospital_id if needed)
+      await apiClient.auth.verify();
+      // Refresh hospitals list
+      await apiClient.hospitals.list();
+    } catch (error) {
+      console.error('Failed to refresh user/hospitals:', error);
+    }
+  };
 
   // Fetch departments for current hospital
   useEffect(() => {
@@ -73,12 +87,11 @@ export function ReportsPage() {
 
       try {
         setDepartmentsLoading(true);
-        const response = await apiClient.hospitals.getDepartments(user.hospital_id);
-        
+        const response = await apiClient.hospitals.getExternalDepartments(user.hospital_id);
+
         if (response.success && response.data?.departments) {
-          // Extract just the department names
-          const deptNames = response.data.departments.map((dept: any) => 
-            typeof dept === 'string' ? dept : dept.category || dept.departmentName
+          const deptNames = response.data.departments.map((dept: any) =>
+            typeof dept === 'string' ? dept : dept.departmentName || dept.category || dept.name
           );
           setDepartments(deptNames);
           setDepartmentsError(null);
@@ -120,13 +133,33 @@ export function ReportsPage() {
 
     // Date range filter
     if (dateRange !== 'all') {
-      const now = new Date();
-      let daysBack = 7;
-      if (dateRange === '30days') daysBack = 30;
-      if (dateRange === '90days') daysBack = 90;
+      if (dateRange === 'custom') {
+        const startDate = customStartDate ? new Date(customStartDate) : null;
+        const endDate = customEndDate ? new Date(customEndDate) : null;
 
-      const cutoffDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
-      result = result.filter((ref) => new Date(ref.created_at) >= cutoffDate);
+        if (startDate) {
+          startDate.setHours(0, 0, 0, 0);
+        }
+
+        if (endDate) {
+          endDate.setHours(23, 59, 59, 999);
+        }
+
+        result = result.filter((ref) => {
+          const createdAt = new Date(ref.created_at);
+          if (startDate && createdAt < startDate) return false;
+          if (endDate && createdAt > endDate) return false;
+          return true;
+        });
+      } else {
+        const now = new Date();
+        let daysBack = 7;
+        if (dateRange === '30days') daysBack = 30;
+        if (dateRange === '90days') daysBack = 90;
+
+        const cutoffDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+        result = result.filter((ref) => new Date(ref.created_at) >= cutoffDate);
+      }
     }
 
     // Department filter
@@ -140,7 +173,7 @@ export function ReportsPage() {
     }
 
     return result;
-  }, [hospitalReferrals, dateRange, departmentFilter, statusFilter]);
+  }, [hospitalReferrals, dateRange, customStartDate, customEndDate, departmentFilter, statusFilter]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -472,18 +505,26 @@ export function ReportsPage() {
                       ? 'Last 7 Days'
                       : dateRange === '30days'
                         ? 'Last 30 Days'
-                        : 'Last 90 Days'}
+                        : dateRange === '90days'
+                          ? 'Last 90 Days'
+                          : customStartDate || customEndDate
+                            ? `${customStartDate || 'Any'} → ${customEndDate || 'Any'}`
+                            : 'Custom Range'}
                 </span>
                 <ChevronDown size={16} className={`transition-transform ${isDateMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isDateMenuOpen && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10">
-                  {['all', '7days', '30days', '90days'].map((option) => (
+                  {['all', '7days', '30days', '90days', 'custom'].map((option) => (
                     <button
                       key={option}
                       onClick={() => {
                         setDateRange(option as DateRange);
+                        if (option !== 'custom') {
+                          setCustomStartDate('');
+                          setCustomEndDate('');
+                        }
                         setIsDateMenuOpen(false);
                       }}
                       className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 first:rounded-t-lg last:rounded-b-lg"
@@ -494,7 +535,9 @@ export function ReportsPage() {
                           ? 'Last 7 Days'
                           : option === '30days'
                             ? 'Last 30 Days'
-                            : 'Last 90 Days'}
+                            : option === '90days'
+                              ? 'Last 90 Days'
+                              : 'Custom Range'}
                     </button>
                   ))}
                 </div>
@@ -590,6 +633,29 @@ export function ReportsPage() {
               )}
             </div>
           </div>
+
+          {dateRange === 'custom' && (
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Start Date</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">End Date</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary Statistics Cards */}

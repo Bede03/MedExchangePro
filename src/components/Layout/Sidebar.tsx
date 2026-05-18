@@ -16,6 +16,7 @@ export function Sidebar() {
       { to: '/dashboard', label: 'Dashboard', icon: Home },
       { to: '/patients', label: 'Patients', icon: ClipboardList },
       { to: '/referrals', label: 'Referrals', icon: FileText },
+      { to: '/transfers', label: 'Transfers', icon: Building },
       { to: '/reports', label: 'Reports', icon: BarChart3 },
     ];
 

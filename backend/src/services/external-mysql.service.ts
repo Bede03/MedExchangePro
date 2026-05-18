@@ -7,6 +7,7 @@ export interface ExternalPatientRecord {
   dob: string;
   diagnosis: string;
   national_id: string;
+  phone?: string;
   source_system?: string;
 }
 

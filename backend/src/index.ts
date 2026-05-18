@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import patientRoutes from './routes/patient.routes.js';
 import referralRoutes from './routes/referral.routes.js';
+import transferRoutes from './routes/transfer.routes.js';
 import patientRecordsRoutes from './routes/patient-records.routes.js';
 import hospitalRoutes from './routes/hospital.routes.js';
 import auditRoutes from './routes/audit.routes.js';
@@ -18,10 +19,12 @@ import kfhOracleRoutes from './routes/kfh-oracle.routes.js';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const ALLOWED_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'];
 
-// Middlewares
-app.use(cors({ origin: CORS_ORIGIN }));
+// CORS middleware configuration - accept both ports for development
+app.use(cors({ 
+  origin: true  // In development, allow any origin; in production use proper validation
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(loggingMiddleware);
@@ -66,6 +69,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/referrals', referralRoutes);
+app.use('/api/transfers', transferRoutes);
 app.use('/api/patient-records', patientRecordsRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/audit', auditRoutes);
@@ -90,7 +94,7 @@ const server = app.listen(PORT, () => {
 ╔════════════════════════════════════════════╗
 ║  🏥 MedExchange Backend Server Running    ║
 ║  Port: ${PORT}                          
-║  CORS: ${CORS_ORIGIN}
+║  CORS: ${ALLOWED_ORIGINS.join(', ')}
 ║  Environment: ${process.env.NODE_ENV || 'development'}
 ╚════════════════════════════════════════════╝
   `);

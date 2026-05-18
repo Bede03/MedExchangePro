@@ -51,6 +51,9 @@ model Hospital {
   referralsRequesting    Referral[] @relation("requestingHospital")
   referralsReceiving     Referral[] @relation("receivingHospital")
   sharedPatientRecords   SharedPatientRecord[]
+  
+  transfersFrom          Transfer[] @relation("transferFrom")
+  transfersTo            Transfer[] @relation("transferTo")
 
   @@map("hospitals")
 }
@@ -183,6 +186,7 @@ enum AuditEntityType {
   User
   Referral
   Patient
+  Transfer
   Hospital
 
   @@map("audit_entity_type")
@@ -220,6 +224,75 @@ model SharedPatientRecord {
   @@index([referralId])
   @@index([patientId])
   @@index([receivingHospitalId])
+}
+
+model Transfer {
+  id                    String          @id @default(cuid())
+  transferNumber        Int             @unique @default(autoincrement()) @map("transfer_number")
+  transferId            String          @unique @map("transfer_id")
+  
+  // Patient identifier from external database (national ID)
+  patientNationalId     String          @map("patient_national_id")
+  patientName           String?         @map("patient_name") // Cache the name for display
+  
+  fromHospitalId        String          @map("from_hospital_id")
+  fromHospital          Hospital        @relation("transferFrom", fields: [fromHospitalId], references: [id], onDelete: Restrict)
+  
+  toHospitalId          String          @map("to_hospital_id")
+  toHospital            Hospital        @relation("transferTo", fields: [toHospitalId], references: [id], onDelete: Restrict)
+  
+  transferType          String          @map("transfer_type") // Emergency, Non-Emergency, Follow-up
+  status                String          @default("pending") // pending, approved, in-transit, completed, rejected
+  
+  // Clinical details
+  reasonForTransfer     String?         @map("reason_for_transfer")
+  significantFindings   String?         @map("significant_findings")
+  clinicalPresentation  String?         @map("clinical_presentation")
+  immediateCondition    String?         @map("immediate_condition")
+  
+  // Vital signs
+  temperature           String?
+  spo2                  String?
+  rr                    String?
+  pulse                 String?
+  bp                    String?
+  weight                String?
+  muac                  String?
+  
+  // Medical information
+  laboratory            String?
+  diagnosis             String?
+  procedures            String?
+  medications           String?
+  
+  // Transport details
+  transportType         String?         @map("transport_type") // Ambulance, Other, None
+  transportNotes        String?         @map("transport_notes")
+  
+  // Insurance
+  insuranceType         String?         @map("insurance_type") // CBHI, RSSB, MMI, Other
+  insuranceOther        String?         @map("insurance_other")
+  
+  // Contact information
+  referringClinician    String?         @map("referring_clinician")
+  referringPhone        String?         @map("referring_phone")
+  receivingService      String?         @map("receiving_service")
+  receivingPhone        String?         @map("receiving_phone")
+  
+  // Dates
+  admissionDate         String?         @map("admission_date")
+  admissionTime         String?         @map("admission_time")
+  decisionDate          String?         @map("decision_date")
+  decisionTime          String?         @map("decision_time")
+  
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+  externalPatientData   Json?           @map("external_patient_data")
+
+  @@map("transfers")
+  @@index([patientNationalId])
+  @@index([fromHospitalId])
+  @@index([toHospitalId])
 }
 
 model Notification {

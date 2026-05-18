@@ -10,6 +10,16 @@ export interface User {
   active?: boolean;
 }
 
+export interface PatientProfile {
+  name?: string;
+  dob?: string; // ISO date
+  gender?: string;
+  phone?: string;
+  address?: string;
+  nationalId?: string;
+  sourceSystem?: string;
+}
+
 export interface Hospital {
   id: string;
   name: string;
@@ -71,6 +81,61 @@ export interface AppNotification {
   datetime: string; // ISO
   type: AppNotificationType;
   read?: boolean;
+}
+
+export type TransferStatus = 'pending' | 'approved' | 'in_transit' | 'completed' | 'cancelled';
+
+export type TransferType = 'Emergency' | 'Non-Emergency' | 'Follow-up';
+
+export interface Hospital {
+  id: string;
+  name: string;
+  location?: string;
+}
+
+export interface Transfer {
+  id: string;
+  transferNumber?: number;
+  transferId: string;
+  patientNationalId: string;
+  patientName: string;
+  fromHospitalId: string;
+  toHospitalId: string;
+  transferType: TransferType;
+  status: TransferStatus;
+  reasonForTransfer: string;
+  significantFindings?: string;
+  clinicalPresentation?: string;
+  immediateCondition?: string;
+  temperature?: number;
+  spo2?: number;
+  rr?: number; // respiratory rate
+  pulse?: number;
+  bp?: string; // blood pressure
+  weight?: number;
+  muac?: number; // mid-upper arm circumference
+  laboratory?: string;
+  diagnosis?: string;
+  procedures?: string;
+  medications?: string;
+  transportType?: string;
+  transportNotes?: string;
+  insuranceType?: string;
+  insuranceOther?: string;
+  referringClinician: string;
+  referringPhone?: string;
+  receivingService?: string;
+  receivingPhone?: string;
+  admissionDate?: string; // ISO date
+  admissionTime?: string;
+  decisionDate: string; // ISO date
+  decisionTime?: string;
+  createdAt: string; // ISO date
+  updatedAt?: string; // ISO date
+  fromHospital?: Hospital;
+  toHospital?: Hospital;
+  patientProfile?: PatientProfile;
+  externalPatientData?: any;
 }
 
 export type AuditAction = 'User Updated' | 'Status Changed' | 'User Created' | 'Data Accessed';
