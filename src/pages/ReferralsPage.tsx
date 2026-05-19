@@ -178,7 +178,7 @@ export function ReferralsPage() {
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              Sent
+              Requested
             </button>
             <button
               type="button"

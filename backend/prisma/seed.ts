@@ -17,9 +17,10 @@ async function main() {
   await prisma.hospitalDepartment.deleteMany();
   await prisma.hospital.deleteMany();
 
-  // Create hospitals
+  // Create hospitals with fixed IDs matching database_setup.sql
   const hospital1 = await prisma.hospital.create({
     data: {
+      id: 'hosp-01',
       name: 'CHUK',
       location: 'KN 05 St, Kigali',
     },
@@ -27,6 +28,7 @@ async function main() {
 
   const hospital2 = await prisma.hospital.create({
     data: {
+      id: 'hosp-02',
       name: 'King Faisal Hospital',
       location: 'KK 03 St, Kigali',
     },
@@ -57,36 +59,39 @@ async function main() {
 
   console.log('✅ Hospital departments created');
 
-  // Create users
+  // Create users with fixed IDs
   const user1 = await prisma.user.create({
     data: {
+      id: 'user-01',
       fullName: 'Jean Claude',
       email: 'jean@kfh.rw',
       password: await hashPassword('password123'),
       role: 'admin',
-      hospitalId: hospital2.id,
+      hospitalId: 'hosp-02',
       isActive: true,
     },
   });
 
   const user2 = await prisma.user.create({
     data: {
+      id: 'user-02',
       fullName: 'Izere Mpuhwe',
       email: 'izere@chuk.rw',
       password: await hashPassword('password123'),
       role: 'clinician',
-      hospitalId: hospital1.id,
+      hospitalId: 'hosp-01',
       isActive: true,
     },
   });
 
   const user3 = await prisma.user.create({
     data: {
+      id: 'user-03',
       fullName: 'Aline Uwase',
       email: 'aline@chuk.rw',
       password: await hashPassword('password123'),
       role: 'hospital_staff',
-      hospitalId: hospital1.id,
+      hospitalId: 'hosp-01',
       isActive: true,
     },
   });
@@ -96,37 +101,40 @@ async function main() {
   // Create patients
   const patient1 = await prisma.patient.create({
     data: {
+      id: 'pat-01',
       name: 'Emmanuel Niyonzima',
       gender: 'male',
       dob: '1989-06-15',
       phone: '0781234567',
       address: 'KN 5 Rd, Kacyiru, Kigali',
       nationalId: '1200987654321001',
-      hospitalId: hospital1.id,
+      hospitalId: 'hosp-01',
     },
   });
 
   const patient2 = await prisma.patient.create({
     data: {
+      id: 'pat-02',
       name: 'Aline Uwase',
       gender: 'female',
       dob: '1997-04-08',
       phone: '0782345678',
       address: 'KN 5 Rd, Kacyiru, Kigali',
       nationalId: '1200123456789002',
-      hospitalId: hospital1.id,
+      hospitalId: 'hosp-01',
     },
   });
 
   const patient3 = await prisma.patient.create({
     data: {
+      id: 'pat-03',
       name: 'Jean Pierre',
       gender: 'male',
       dob: '1972-11-21',
       phone: '0783456789',
       address: 'KN 3 Rd, Kigali',
       nationalId: '1200456789012003',
-      hospitalId: hospital2.id,
+      hospitalId: 'hosp-02',
     },
   });
 
@@ -143,8 +151,8 @@ async function main() {
       priority: 'Emergency',
       department: 'Cardiology',
       status: 'completed',
-      requestingHospitalId: hospital1.id,
-      receivingHospitalId: hospital2.id,
+      requestingHospitalId: 'hosp-01',
+      receivingHospitalId: 'hosp-02',
       createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 9),
       completedAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 8),
     },
@@ -158,8 +166,8 @@ async function main() {
       priority: 'Urgent',
       department: 'Surgery',
       status: 'completed',
-      requestingHospitalId: hospital1.id,
-      receivingHospitalId: hospital2.id,
+      requestingHospitalId: 'hosp-01',
+      receivingHospitalId: 'hosp-02',
       createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 11),
       completedAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 10),
     },
@@ -173,8 +181,8 @@ async function main() {
       priority: 'Emergency',
       department: 'ICU',
       status: 'pending',
-      requestingHospitalId: hospital1.id,
-      receivingHospitalId: hospital2.id,
+      requestingHospitalId: 'hosp-01',
+      receivingHospitalId: 'hosp-02',
       createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 1),
     },
   });
@@ -188,8 +196,8 @@ async function main() {
       priority: 'Urgent',
       department: 'Radiology',
       status: 'pending',
-      requestingHospitalId: hospital2.id,
-      receivingHospitalId: hospital1.id,
+      requestingHospitalId: 'hosp-02',
+      receivingHospitalId: 'hosp-01',
       createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 2),
     },
   });
@@ -202,8 +210,8 @@ async function main() {
       priority: 'Routine',
       department: 'Orthopedics',
       status: 'approved',
-      requestingHospitalId: hospital2.id,
-      receivingHospitalId: hospital1.id,
+      requestingHospitalId: 'hosp-02',
+      receivingHospitalId: 'hosp-01',
       createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 5),
     },
   });
@@ -216,8 +224,8 @@ async function main() {
       priority: 'Urgent',
       department: 'Neurology',
       status: 'pending',
-      requestingHospitalId: hospital2.id,
-      receivingHospitalId: hospital1.id,
+      requestingHospitalId: 'hosp-02',
+      receivingHospitalId: 'hosp-01',
       createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 60 * 1),
     },
   });

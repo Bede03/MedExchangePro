@@ -100,14 +100,20 @@ export function useMockData() {
 
   const addReferral = useCallback(async (referral: any) => {
     try {
-      const response = await apiClient.referrals.create({
+      const payload: any = {
         patientId: referral.patient_id,
         reason: Array.isArray(referral.reason) ? referral.reason.join('; ') : referral.reason,
         reasonDetails: referral.reasonDetails,
         priority: referral.priority,
         receivingHospitalId: referral.receiving_hospital_id,
         department: referral.department,
-      });
+      };
+
+      if (referral.attachmentUrl || referral.attachment_url || referral.attachment) {
+        payload.attachmentUrl = referral.attachmentUrl || referral.attachment_url || referral.attachment;
+      }
+
+      const response = await apiClient.referrals.create(payload);
 
       if (response.data) {
         const newRef = {
@@ -121,6 +127,7 @@ export function useMockData() {
           receiving_hospital_id: response.data.receivingHospitalId,
           created_at: response.data.createdAt,
           department: response.data.department,
+          attachmentUrl: response.data.attachmentUrl || response.data.attachment_url || null,
         };
         setReferrals((prev) => [newRef, ...prev]);
       }

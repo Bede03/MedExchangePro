@@ -1,6 +1,8 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import * as path from 'path';
+import * as fs from 'fs';
 import { loggingMiddleware } from './middleware/logging.js';
 import { errorHandler } from './middleware/error.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -14,12 +16,16 @@ import patientRecordsRoutes from './routes/patient-records.routes.js';
 import hospitalRoutes from './routes/hospital.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import uploadsRoutes from './routes/uploads.routes.js';
 import externalMysqlRoutes from './routes/external-mysql.routes.js';
 import kfhOracleRoutes from './routes/kfh-oracle.routes.js';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
 const ALLOWED_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'];
+
+const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // CORS middleware configuration - accept both ports for development
 app.use(cors({ 
@@ -28,6 +34,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(loggingMiddleware);
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // Routes
 app.get('/health', (req, res) => {
@@ -74,6 +81,7 @@ app.use('/api/patient-records', patientRecordsRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/uploads', uploadsRoutes);
 app.use('/api/external-mysql', externalMysqlRoutes);
 app.use('/api/kfh-oracle', kfhOracleRoutes);
 

@@ -80,9 +80,15 @@ export const createReferralSchema = z.object({
     .transform((value) => (Array.isArray(value) ? value : [value])),
   reasonDetails: z.string().max(500, 'Reason details cannot exceed 500 characters').optional(),
   priority: z.enum(['Emergency', 'Urgent', 'Routine']),
-  department: z.enum(DEPARTMENTS as any, {
-    errorMap: () => ({ message: `Department must be one of: ${DEPARTMENTS.join(', ')}` }),
-  }),
+  department: z
+    .union([
+      z.array(z.enum(DEPARTMENTS as any)).min(1),
+      z.enum(DEPARTMENTS as any),
+    ])
+    .transform((value) => (Array.isArray(value) ? value : [value]))
+    .refine((value) => value.length > 0, {
+      message: `Department must be one of: ${DEPARTMENTS.join(', ')}`,
+    }),
   receivingHospitalId: z.string().min(1, 'Receiving hospital is required'),
 });
 

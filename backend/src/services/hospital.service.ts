@@ -132,15 +132,13 @@ export class HospitalService {
 
     const isKfh = hospital.id === 'hosp-02' || hospital.name.toLowerCase().includes('king faisal');
 
+    // For now, KFH always returns internal departments (external not ready)
+    // TODO: Integrate actual KFH Oracle data when available
     if (isKfh) {
-      const kfhDepartments = await kfhOracleService.getDepartments(100);
-      return kfhDepartments.map((dept) => ({
-        id: `kfh-${dept.dept_id}`,
-        category: dept.category,
-        departmentName: dept.name,
-      }));
+      console.log(`📚 [${id}] Using internal departments (KFH Oracle integration in progress)`);
     }
 
+    // Always return internal departments - this ensures data is displayed
     const departments = await prisma.hospitalDepartment.findMany({
       where: { hospitalId: id },
       select: {

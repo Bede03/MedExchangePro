@@ -66,13 +66,17 @@ export interface DepartmentValidationResult {
  * Validate a referral's department against hospital capabilities
  */
 export function validateReferralDepartment(
-  department: string,
+  department: string | string[],
   receivingHospitalId: string,
   receivingHospitalName?: string
 ): DepartmentValidationResult {
   const errors: string[] = [];
 
-  if (!department || !department.trim()) {
+  const departmentList = Array.isArray(department)
+    ? department.map((d) => String(d || '').trim()).filter(Boolean)
+    : [String(department || '').trim()];
+
+  if (departmentList.length === 0) {
     errors.push('Department is required');
     return { isValid: false, errors };
   }
@@ -93,16 +97,21 @@ export function validateReferralDepartment(
     return { isValid: false, errors };
   }
 
-  const trimmedDept = department.trim();
-  if (!hospitalDepartments.includes(trimmedDept)) {
-    errors.push(`The hospital does not have a ${trimmedDept} department`);
+  const invalidDepartments = departmentList.filter((dept) => !hospitalDepartments.includes(dept));
+
+  if (invalidDepartments.length > 0) {
+    invalidDepartments.forEach((dept) => {
+      errors.push(`The hospital does not have a ${dept} department`);
+    });
     return { isValid: false, errors };
   }
+
+  const uniqueDepartments = Array.from(new Set(departmentList));
 
   return {
     isValid: true,
     errors: [],
-    department: trimmedDept,
+    department: uniqueDepartments.join('; '),
   };
 }
 

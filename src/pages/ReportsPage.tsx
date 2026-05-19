@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
+import { getDepartmentsForHospital } from '../data/departments';
 import { StatCard } from '../components/UI/StatCard';
 import { StatusBadge } from '../components/UI/StatusBadge';
 import { apiClient } from '../services/api';
@@ -56,7 +57,7 @@ export function ReportsPage() {
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
@@ -77,7 +78,7 @@ export function ReportsPage() {
     }
   };
 
-  // Fetch departments for current hospital
+  // Fetch departments for current hospital, with local fallback
   useEffect(() => {
     const fetchDepartments = async () => {
       if (!user?.hospital_id) {
@@ -85,31 +86,44 @@ export function ReportsPage() {
         return;
       }
 
+      const currentHospitalName = hospitals.find((h) => h.id === user.hospital_id)?.name;
+      const localDeptNames = getDepartmentsForHospital(user.hospital_id, currentHospitalName)
+        .map((dept) => dept.name)
+        .sort();
+
+      const fallbackToLocalDepartments = () => {
+        setDepartments(localDeptNames);
+        setDepartmentsError(null);
+      };
+
       try {
         setDepartmentsLoading(true);
         const response = await apiClient.hospitals.getExternalDepartments(user.hospital_id);
 
-        if (response.success && response.data?.departments) {
+        if (response.success && Array.isArray(response.data?.departments) && response.data.departments.length > 0) {
           const deptNames = response.data.departments.map((dept: any) =>
             typeof dept === 'string' ? dept : dept.departmentName || dept.category || dept.name
           );
-          setDepartments(deptNames);
-          setDepartmentsError(null);
+
+          if (deptNames.length < localDeptNames.length) {
+            fallbackToLocalDepartments();
+          } else {
+            setDepartments(deptNames);
+            setDepartmentsError(null);
+          }
         } else {
-          setDepartments([]);
-          setDepartmentsError('No departments found');
+          fallbackToLocalDepartments();
         }
       } catch (error) {
         console.error('Failed to fetch departments:', error);
-        setDepartments([]);
-        setDepartmentsError('Failed to load departments');
+        fallbackToLocalDepartments();
       } finally {
         setDepartmentsLoading(false);
       }
     };
 
     fetchDepartments();
-  }, [user?.hospital_id]);
+  }, [user?.hospital_id, hospitals]);
 
   const hospitalMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -163,8 +177,8 @@ export function ReportsPage() {
     }
 
     // Department filter
-    if (departmentFilter !== 'all') {
-      result = result.filter((ref) => ref.department === departmentFilter);
+    if (departmentFilter.length > 0) {
+      result = result.filter((ref) => departmentFilter.includes(ref.department));
     }
 
     // Status filter
@@ -555,19 +569,23 @@ export function ReportsPage() {
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 flex items-center justify-between hover:border-slate-400 transition-colors"
               >
                 <span>
-                  {departmentFilter === 'all' ? 'All Departments' : departmentFilter}
+                  {departmentFilter.length === 0 
+                    ? 'All Departments' 
+                    : departmentFilter.length === 1
+                      ? departmentFilter[0]
+                      : `${departmentFilter.length} departments selected`}
                 </span>
                 <ChevronDown size={16} className={`transition-transform ${isDepartmentMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isDepartmentMenuOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-64 overflow-y-auto">
                   <button
                     onClick={() => {
-                      setDepartmentFilter('all');
+                      setDepartmentFilter([]);
                       setIsDepartmentMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 first:rounded-t-lg"
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 first:rounded-t-lg border-b border-slate-200"
                   >
                     All Departments
                   </button>
@@ -578,18 +596,28 @@ export function ReportsPage() {
                   ) : departments.length === 0 ? (
                     <div className="px-4 py-2 text-sm text-slate-500">No departments available</div>
                   ) : (
-                    departments.map((dept) => (
-                      <button
-                        key={dept}
-                        onClick={() => {
-                          setDepartmentFilter(dept);
-                          setIsDepartmentMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100"
-                      >
-                        {dept}
-                      </button>
-                    ))
+                    <div className="p-2 space-y-1">
+                      {departments.map((dept) => (
+                        <label
+                          key={dept}
+                          className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-slate-100 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={departmentFilter.includes(dept)}
+                            onChange={() => {
+                              setDepartmentFilter((prev) =>
+                                prev.includes(dept)
+                                  ? prev.filter((d) => d !== dept)
+                                  : [...prev, dept]
+                              );
+                            }}
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span>{dept}</span>
+                        </label>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}

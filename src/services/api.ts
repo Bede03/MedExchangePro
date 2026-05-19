@@ -228,6 +228,32 @@ export const apiClient = {
     },
   },
 
+  // File uploads (for storing attachments and returning a URL)
+  uploads: {
+    create: async (formData: FormData) => {
+      const headers: HeadersInit = {};
+      const token = apiClient.getToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`${API_URL}/api/uploads`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to upload file';
+        try {
+          const errorBody = await response.json();
+          if (errorBody?.message) message = `${message}: ${errorBody.message}`;
+        } catch {}
+        throw new Error(message);
+      }
+
+      return response.json();
+    },
+  },
+
   // Hospital endpoints
   hospitals: {
     list: async () => {

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
+import { apiClient } from '../services/api';
 import { getDepartmentsForHospital, hospitalHasDepartment } from '../data/departments';
 
 const priorities = ['Emergency', 'Urgent', 'Routine'] as const;
@@ -30,25 +31,41 @@ export function NewReferralPage() {
   );
 
   const [patientId, setPatientId] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientListOpen, setPatientListOpen] = useState(false);
   const patient = useMemo(
     () => patientsForHospital.find((p) => p.id === patientId) ?? null,
     [patientsForHospital, patientId]
   );
 
+  const filteredPatients = useMemo(
+    () =>
+      patientsForHospital.filter((p) =>
+        `${p.name}${p.national_id ? ` (${p.national_id})` : ''}`
+          .toLowerCase()
+          .includes(patientSearch.toLowerCase())
+      ),
+    [patientsForHospital, patientSearch]
+  );
+
   useEffect(() => {
-    if (!patientId && patientsForHospital.length > 0) {
-      setPatientId(patientsForHospital[0].id);
+    // Do not auto-select a patient on load. Keep the input empty so clinician must choose.
+    if (!patientId) {
+      setPatientSearch('');
     }
   }, [patientId, patientsForHospital]);
 
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [reasonDetails, setReasonDetails] = useState('');
   const [priority, setPriority] = useState<typeof priorities[number]>('Emergency');
-  const [department, setDepartment] = useState('');
+  const [departments, setDepartments] = useState<string[]>([]);
   const [departmentError, setDepartmentError] = useState<string | null>(null);
+  const [departmentOpen, setDepartmentOpen] = useState(false);
 
   const [receivingHospitalId, setReceivingHospitalId] = useState(hospitals[0]?.id ?? '');
   const [notes, setNotes] = useState('');
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentName, setAttachmentName] = useState('No file chosen');
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,13 +106,13 @@ export function NewReferralPage() {
     return sharedDepartments.map((d) => d.name).sort();
   }, [receivingHospitalId, requestingHospitalId, requestingHospitalName, hospitals]);
 
-  // Reset department when receiving hospital changes
+  // Reset departments when receiving hospital changes
   React.useEffect(() => {
     if (availableDepartments.length > 0) {
-      setDepartment(availableDepartments[0]);
+      setDepartments([availableDepartments[0]]);
       setDepartmentError(null);
     } else {
-      setDepartment('');
+      setDepartments([]);
       setDepartmentError('Selected hospital has no departments');
     }
   }, [availableDepartments]);
@@ -125,18 +142,20 @@ export function NewReferralPage() {
       return;
     }
 
-    if (!department) {
-      setDepartmentError('Please select a department.');
+    if (departments.length === 0) {
+      setDepartmentError('Please select at least one department.');
       return;
     }
 
-    // Validate selected department is shared by both hospitals
-    if (
-      !hospitalHasDepartment(receivingHospitalId, department, hospitals.find((h) => h.id === receivingHospitalId)?.name) ||
-      !hospitalHasDepartment(requestingHospitalId, department, requestingHospitalName)
-    ) {
-      setDepartmentError(`${department} is not available for shared referral between selected hospitals.`);
-      return;
+    // Validate each selected department is shared by both hospitals
+    for (const dept of departments) {
+      if (
+        !hospitalHasDepartment(receivingHospitalId, dept, hospitals.find((h) => h.id === receivingHospitalId)?.name) ||
+        !hospitalHasDepartment(requestingHospitalId, dept, requestingHospitalName)
+      ) {
+        setDepartmentError(`${dept} is not available for shared referral between selected hospitals.`);
+        return;
+      }
     }
 
     setShowConfirm(true);
@@ -149,6 +168,15 @@ export function NewReferralPage() {
     const patient = patients.find((p) => p.id === patientId);
 
     try {
+      let attachmentUrl: string | undefined;
+      if (attachmentFile) {
+        const fd = new FormData();
+        fd.append('file', attachmentFile);
+        const uploadResp: any = await apiClient.uploads.create(fd);
+        // Try several common response shapes
+        attachmentUrl = uploadResp?.data?.url || uploadResp?.url || uploadResp?.path || uploadResp?.data?.path || uploadResp?.attachmentUrl || uploadResp?.attachment_url;
+      }
+
       await addReferral({
         patient_id: patientId,
         patient_name: patient?.name ?? 'Unknown',
@@ -156,9 +184,10 @@ export function NewReferralPage() {
         reasonDetails: reasonDetails.trim(),
         status: 'pending',
         priority,
-        department,
+        department: departments,
         requesting_hospital_id: requestingHospitalId ?? '',
         receiving_hospital_id: receivingHospitalId,
+        attachmentUrl,
       });
 
       navigate('/referrals');
@@ -181,30 +210,56 @@ export function NewReferralPage() {
         </button>
       </header>
 
-      <div className="mx-auto w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Submit Referral</h1>
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900 mb-6">Submit Referral</h1>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="relative">
               <label className="text-sm font-medium text-slate-700" htmlFor="patient">
                 Patient *
               </label>
-              <select
+              <input
                 id="patient"
-                value={patientId}
-                onChange={(e) => setPatientId(e.target.value)}
+                type="text"
+                value={patientSearch}
+                onChange={(e) => {
+                  setPatientSearch(e.target.value);
+                  setPatientListOpen(true);
+                  const matchingPatient = patientsForHospital.find(
+                    (p) =>
+                      e.target.value ===
+                      `${p.name}${p.national_id ? ` (${p.national_id})` : ''}`
+                  );
+                  setPatientId(matchingPatient?.id ?? '');
+                }}
+                onFocus={() => setPatientListOpen(true)}
+                onBlur={() => setTimeout(() => setPatientListOpen(false), 150)}
+                placeholder="Type or select a patient"
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              >
-                <option value="" disabled>
-                  Select patient
-                </option>
-                {patientsForHospital.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              />
+              {patientListOpen && (
+                <div className="absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg">
+                  {filteredPatients.length > 0 ? (
+                    filteredPatients.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setPatientSearch(`${p.name}${p.national_id ? ` (${p.national_id})` : ''}`);
+                          setPatientId(p.id);
+                          setPatientListOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-slate-100"
+                      >
+                        {p.name} {p.national_id ? `(${p.national_id})` : ''}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-sm text-slate-500">No patients found.</div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -252,43 +307,66 @@ export function NewReferralPage() {
               </select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="department">
-                Department *
-              </label>
-              <select
-                id="department"
-                value={department}
-                onChange={(e) => {
-                  setDepartment(e.target.value);
-                  setDepartmentError(null);
-                }}
-                disabled={availableDepartments.length === 0}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            <div className="relative">
+              <label className="text-sm font-medium text-slate-700">Department *</label>
+              <button
+                type="button"
+                onClick={() => setDepartmentOpen((open) => !open)}
+                className="mt-1 flex h-12 w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 text-left text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               >
-                <option value="">Select department</option>
-                {availableDepartments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
+                <span className="truncate">
+                  {departments.length > 0 ? departments.join(', ') : 'Select one or more departments'}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${departmentOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {departmentOpen && (
+                <div className="absolute left-0 top-full z-10 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                  {availableDepartments.length > 0 ? (
+                    <div className="grid gap-2">
+                      {availableDepartments.map((dept) => (
+                        <label
+                          key={dept}
+                          className="inline-flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 hover:border-indigo-300"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={departments.includes(dept)}
+                            onChange={() => {
+                              setDepartments((prev) =>
+                                prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]
+                              );
+                              setDepartmentError(null);
+                            }}
+                          />
+                          <span>{dept}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                      No departments available for this hospital.
+                    </div>
+                  )}
+                </div>
+              )}
               {departmentError ? (
                 <div className="mt-2 flex items-center gap-2 text-sm text-red-700">
                   <AlertCircle className="h-4 w-4" />
                   <p>{departmentError}</p>
                 </div>
               ) : null}
+              <p className="mt-2 text-xs text-slate-500">Click to open and select one or more receiving departments.</p>
             </div>
 
             <div className="md:col-span-2">
               <p className="text-sm font-medium text-slate-700">Reason(s) for Referral *</p>
-              <div className="mt-3 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 max-h-52 overflow-auto">
                 {referralReasons.map((reasonOption) => (
-                  <label key={reasonOption} className="inline-flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 hover:border-indigo-300">
+                  <label key={reasonOption} className="inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm text-slate-900 hover:border-indigo-300">
                     <input
                       type="checkbox"
-                      className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                       checked={selectedReasons.includes(reasonOption)}
                       onChange={() => {
                         setSelectedReasons((prev) =>
@@ -338,14 +416,23 @@ export function NewReferralPage() {
             <div className="md:col-span-2">
               <label className="text-sm font-medium text-slate-700">Attachment (optional)</label>
               <div className="mt-2 flex items-center gap-3">
-                <input type="file" className="hidden" id="attachment" />
+                <input
+                  type="file"
+                  className="hidden"
+                  id="attachment"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setAttachmentFile(f);
+                    setAttachmentName(f?.name ?? 'No file chosen');
+                  }}
+                />
                 <label
                   htmlFor="attachment"
                   className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                 >
                   Choose File
                 </label>
-                <span className="text-sm text-slate-500">No file chosen</span>
+                <span className="text-sm text-slate-500">{attachmentName}</span>
               </div>
             </div>
           </div>

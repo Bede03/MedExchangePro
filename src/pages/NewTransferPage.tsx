@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
+import { getDepartmentsForHospital } from '../data/departments';
 import { apiClient } from '../services/api';
 
 const transferTypes = ['Emergency', 'Non-Emergency', 'Follow-up'] as const;
@@ -31,10 +32,13 @@ export function NewTransferPage() {
   );
 
   const [patientId, setPatientId] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientListOpen, setPatientListOpen] = useState(false);
   const [receivingHospitalId, setReceivingHospitalId] = useState(receivingHospitals[0]?.id ?? '');
   const [referringClinician, setReferringClinician] = useState(user?.full_name ?? '');
   const [referringPhone, setReferringPhone] = useState('');
-  const [receivingService, setReceivingService] = useState('');
+  const [receivingServices, setReceivingServices] = useState<string[]>([]);
+  const [receivingServiceOpen, setReceivingServiceOpen] = useState(false);
   const [receivingPhone, setReceivingPhone] = useState('');
   const [transferType, setTransferType] = useState<typeof transferTypes[number]>('Emergency');
   const [reason, setReason] = useState('');
@@ -63,14 +67,48 @@ export function NewTransferPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const receivingHospital = useMemo(
+    () => hospitals.find((h) => h.id === receivingHospitalId) ?? null,
+    [hospitals, receivingHospitalId]
+  );
+
+  const availableReceivingServices = useMemo(
+    () => getDepartmentsForHospital(receivingHospitalId, receivingHospital?.name),
+    [receivingHospitalId, receivingHospital?.name]
+  );
+
+  useEffect(() => {
+    if (receivingServices.length === 0 && availableReceivingServices.length > 0) {
+      setReceivingServices([availableReceivingServices[0].name]);
+    } else if (receivingServices.length > 0) {
+      const validSelected = receivingServices.filter((service) =>
+        availableReceivingServices.some((dept) => dept.name === service)
+      );
+      if (validSelected.length !== receivingServices.length) {
+        setReceivingServices(validSelected);
+      }
+    }
+  }, [availableReceivingServices, receivingServices]);
+
   const selectedPatient = useMemo(
     () => patientsForHospital.find((p) => p.id === patientId) ?? null,
     [patientsForHospital, patientId]
   );
 
+  const filteredPatients = useMemo(
+    () =>
+      patientsForHospital.filter((p) =>
+        `${p.name}${p.national_id ? ` (${p.national_id})` : ''}`
+          .toLowerCase()
+          .includes(patientSearch.toLowerCase())
+      ),
+    [patientsForHospital, patientSearch]
+  );
+
   useEffect(() => {
-    if (!patientId && patientsForHospital.length > 0) {
-      setPatientId(patientsForHospital[0].id);
+    // Do not auto-select a patient on load. Keep the search field empty so the clinician chooses.
+    if (!patientId) {
+      setPatientSearch('');
     }
   }, [patientId, patientsForHospital]);
 
@@ -97,6 +135,11 @@ export function NewTransferPage() {
 
     if (!reason.trim()) {
       setError('Please provide a reason for transfer.');
+      return;
+    }
+
+    if (receivingServices.length === 0) {
+      setError('Please select at least one receiving department.');
       return;
     }
 
@@ -149,7 +192,7 @@ export function NewTransferPage() {
         insuranceOther,
         referringClinician,
         referringPhone,
-        receivingService,
+        receivingService: receivingServices.join(', '),
         receivingPhone,
         admissionDate,
         admissionTime,
@@ -198,24 +241,49 @@ export function NewTransferPage() {
       <form onSubmit={handleSubmit} className="space-y-8 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <section className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="relative">
               <label htmlFor="patient" className="text-sm font-medium text-slate-700">Patient</label>
-              <select
+              <input
                 id="patient"
-                value={patientId}
-                onChange={(e) => setPatientId(e.target.value)}
+                type="text"
+                value={patientSearch}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPatientSearch(value);
+                  setPatientListOpen(true);
+                  const matchingPatient = patientsForHospital.find(
+                    (patient) =>
+                      value === `${patient.name}${patient.national_id ? ` (${patient.national_id})` : ''}`
+                  );
+                  setPatientId(matchingPatient?.id ?? '');
+                }}
+                onFocus={() => setPatientListOpen(true)}
+                onBlur={() => setTimeout(() => setPatientListOpen(false), 150)}
+                placeholder="Type or select a patient"
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              >
-                {patientsForHospital.length === 0 ? (
-                  <option value="">No patients available</option>
-                ) : (
-                  patientsForHospital.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.name} {patient.national_id ? `(${patient.national_id})` : ''}
-                    </option>
-                  ))
-                )}
-              </select>
+              />
+              {patientListOpen && (
+                <div className="absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg">
+                  {filteredPatients.length > 0 ? (
+                    filteredPatients.map((patient) => (
+                      <button
+                        key={patient.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setPatientSearch(`${patient.name}${patient.national_id ? ` (${patient.national_id})` : ''}`);
+                          setPatientId(patient.id);
+                          setPatientListOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-slate-100"
+                      >
+                        {patient.name} {patient.national_id ? `(${patient.national_id})` : ''}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-sm text-slate-500">No patients found.</div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -268,14 +336,53 @@ export function NewTransferPage() {
               />
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-slate-700">Receiving Service / Unit</label>
-              <input
-                value={receivingService}
-                onChange={(e) => setReceivingService(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                placeholder="e.g. ICU, Surgery, Pediatrics"
-              />
+            <div className="relative">
+              <label className="text-sm font-medium text-slate-700">Receiving Service/ Unit</label>
+              <button
+                type="button"
+                onClick={() => setReceivingServiceOpen((open) => !open)}
+                className="mt-1 flex h-12 w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 text-left text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              >
+                <span className="truncate">
+                  {receivingServices.length > 0 ? receivingServices.join(', ') : 'Select one or more departments'}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${receivingServiceOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {receivingServiceOpen && (
+                <div className="absolute left-0 top-full z-10 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                  {availableReceivingServices.length > 0 ? (
+                    <div className="grid gap-2">
+                      {availableReceivingServices.map((dept) => (
+                        <label
+                          key={dept.id}
+                          className="inline-flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 hover:border-indigo-300"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={receivingServices.includes(dept.name)}
+                            onChange={() => {
+                              setReceivingServices((prev) =>
+                                prev.includes(dept.name)
+                                  ? prev.filter((service) => service !== dept.name)
+                                  : [...prev, dept.name]
+                              );
+                            }}
+                          />
+                          <span>{dept.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                      No departments available for this hospital.
+                    </div>
+                  )}
+                </div>
+              )}
+              <p className="mt-2 text-xs text-slate-500">
+                Click to open and select one or more receiving departments.
+              </p>
             </div>
           </div>
 
