@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, FileText, HeartPulse, Folder } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileText, HeartPulse, Folder, Paperclip, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { apiClient } from '../services/api';
@@ -321,9 +321,37 @@ export function PatientDetailsPage() {
           )}
 
           {activeTab === 'Documents' && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
-              <p className="text-sm font-medium text-slate-700">No documents uploaded.</p>
-              <p className="mt-2 text-sm text-slate-500">Add documents to keep patient records complete.</p>
+            <div>
+              {patientReferrals.filter(r => r.attachmentUrl).length === 0 ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
+                  <p className="text-sm font-medium text-slate-700">No documents uploaded.</p>
+                  <p className="mt-2 text-sm text-slate-500">Add documents to keep patient records complete.</p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-slate-900 mb-4">Patient Documents</p>
+                  <div className="space-y-3">
+                    {patientReferrals.filter(r => r.attachmentUrl).map((r) => (
+                      <div key={r.id} className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-center gap-3">
+                          <Paperclip className="h-5 w-5 text-slate-600" />
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{((r.attachmentUrl || '').split('/').pop() || 'attachment').replace(/^\d+-/, '')}</p>
+                            <p className="text-xs text-slate-500">Attached to referral · {formatDate(r.created_at)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a href={r.attachmentUrl} target="_blank" rel="noreferrer" className="text-sm text-slate-700 hover:text-indigo-600">Preview</a>
+                          <a href={r.attachmentUrl} download className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            <Download className="h-4 w-4" />
+                            <span>Download</span>
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

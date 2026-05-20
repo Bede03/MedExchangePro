@@ -225,7 +225,7 @@ export class TransferService {
       throw new AppError(404, 'Transfer not found');
     }
 
-    let externalPatientData = transfer.externalPatientData || null;
+    let externalPatientData: any = transfer.externalPatientData || null;
 
     if (normalizedStatus === 'in_transit' && !externalPatientData) {
       externalPatientData = await this.captureExternalPatientSnapshot(
@@ -238,11 +238,11 @@ export class TransferService {
       }
     }
 
-    const updatedTransfer = await prisma.transfer.update({
+      const updatedTransfer = await prisma.transfer.update({
       where: { id },
       data: {
         status: normalizedStatus,
-        externalPatientData: externalPatientData ? externalPatientData : undefined,
+        externalPatientData: externalPatientData ? (externalPatientData as any) : undefined,
       },
       include: {
         fromHospital: true,

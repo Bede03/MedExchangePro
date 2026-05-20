@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { auditService } from '../services/audit.service';
+import { userService } from '../services/user.service';
 import { getClientIp, getUserAgent } from '../utils/helpers';
 
 export const login = async (req: Request, res: Response) => {
@@ -71,9 +72,17 @@ export const verifyToken = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
+    const user = await userService.getUserById(req.user.id);
+
     res.json({
       success: true,
-      data: req.user,
+      data: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        hospitalId: user.hospitalId,
+      },
     });
   } catch (error: any) {
     res.status(401).json({

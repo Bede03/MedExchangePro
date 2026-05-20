@@ -32,7 +32,7 @@ export function useMockData() {
           role: u.role,
           hospital_id: u.hospitalId,
           created_at: u.createdAt,
-          active: u.isActive ?? true,
+          active: u.isActive ?? false,
         }));
         setUsers(mappedUsers);
 
@@ -68,6 +68,7 @@ export function useMockData() {
           receiving_hospital_id: r.receivingHospitalId,
           created_at: r.createdAt,
           department: r.department,
+          attachmentUrl: r.attachmentUrl || r.attachment_url || null,
         }));
         setReferrals(mappedReferrals);
 
@@ -165,6 +166,10 @@ export function useMockData() {
     }
   }, []);
 
+  const deleteUser = useCallback((id: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  }, []);
+
   const addUser = useCallback(async (user: Omit<User, 'id'>) => {
     try {
       const response = await apiClient.users.create({
@@ -240,6 +245,7 @@ export function useMockData() {
     addReferral,
     updateReferralStatus,
     updateUser,
+    deleteUser,
     addUser,
     getReferralById,
     counts,

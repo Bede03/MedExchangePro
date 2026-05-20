@@ -444,7 +444,7 @@ export function TransfersPage() {
               header: 'Status',
               accessor: (row) => (
                 <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[row.status]}`}
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[row.status as keyof typeof statusStyles] ?? ''}`}
                 >
                   {formatStatusLabel(row.status)}
                 </span>

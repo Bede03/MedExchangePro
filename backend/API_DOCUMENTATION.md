@@ -106,6 +106,12 @@ docker-compose down
 #### Delete user (admin only)
 - **DELETE** `/api/users/:id`
 - **Auth**: Bearer token required
+- **Behavior**: This is a soft delete. The user row is kept in the database, `is_deleted` is set to `true`, and `deleted_at` is stored. Deleted users cannot log in and are excluded from normal user listings.
+
+#### Restore user (admin only)
+- **PUT** `/api/users/:id/restore`
+- **Auth**: Bearer token required
+- **Behavior**: Reserved for future admin restore capability. This would clear `is_deleted` and `deleted_at`, reactivating the account if appropriate.
 
 ### Patients
 

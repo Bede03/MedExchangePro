@@ -124,6 +124,9 @@ curl -X GET http://localhost:5000/api/referrals \
 | GET | `/api/users/:id` | Get user by ID |
 | PUT | `/api/users/:id` | Update user |
 | DELETE | `/api/users/:id` | Delete user (admin) |
+| PUT | `/api/users/:id/restore` | Restore deleted user (admin, planned) |
+
+> Note: user deletion is implemented as a soft delete. Deleted accounts remain in the database with `is_deleted = true` and `deleted_at` populated, and they can no longer authenticate. A future restore endpoint would clear these fields and return the account to active status when appropriate.
 
 ### Patient Endpoints
 | Method | Endpoint | Description |

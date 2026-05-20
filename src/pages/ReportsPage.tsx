@@ -178,7 +178,7 @@ export function ReportsPage() {
 
     // Department filter
     if (departmentFilter.length > 0) {
-      result = result.filter((ref) => departmentFilter.includes(ref.department));
+      result = result.filter((ref) => departmentFilter.includes(ref.department ?? ''));
     }
 
     // Status filter

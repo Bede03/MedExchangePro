@@ -11,10 +11,10 @@ const uploadDir = path.join(__dirname, '..', '..', 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+  destination: (_req: Request, _file: any, cb: (error: Error | null, destination?: string) => void) => {
     cb(null, uploadDir);
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: Request, file: any, cb: (error: Error | null, filename?: string) => void) => {
     const timestamp = Date.now();
     const sanitized = file.originalname.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
     cb(null, `${timestamp}-${sanitized}`);

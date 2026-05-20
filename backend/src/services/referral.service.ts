@@ -256,6 +256,7 @@ export class ReferralService {
         reason: reasonText,
         priority: data.priority,
         department: deptValidation.department as string,
+        attachmentUrl: data.attachmentUrl ?? null,
         requestingHospitalId: currentUser.hospitalId,
         receivingHospitalId: data.receivingHospitalId,
       },

@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Copy, Check, X, AlertCircle, Send, RotateCcw } from 'lucide-react';
+import { Paperclip, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { StatusBadge } from '../components/UI/StatusBadge';
@@ -100,6 +101,7 @@ export function ReferralDetailsPage() {
           medical_history: response.data.patient?.medical_history || response.data.medicalHistory,
           lab_results: response.data.patient?.lab_results || response.data.labResults,
           patient_documents: response.data.patient?.patient_documents || response.data.patientDocuments,
+          attachmentUrl: response.data.attachmentUrl || response.data.attachment_url || null,
           allergies: response.data.patient?.allergies || response.data.allergies,
           current_medications: response.data.patient?.current_medications || response.data.currentMedications,
           diagnoses: response.data.patient?.diagnoses || response.data.diagnoses,
@@ -177,6 +179,7 @@ export function ReferralDetailsPage() {
             medical_history: response.data.patient?.medical_history || response.data.medicalHistory,
             lab_results: response.data.patient?.lab_results || response.data.labResults,
             patient_documents: response.data.patient?.patient_documents || response.data.patientDocuments,
+            attachmentUrl: response.data.attachmentUrl || response.data.attachment_url || null,
             allergies: response.data.patient?.allergies || response.data.allergies,
             current_medications: response.data.patient?.current_medications || response.data.currentMedications,
             diagnoses: response.data.patient?.diagnoses || response.data.diagnoses,
@@ -788,11 +791,26 @@ export function ReferralDetailsPage() {
           )}
 
           {/* Patient Documents Section */}
-          {referral.patient_documents && (
+          {referral.attachmentUrl && (
             <div className="mt-6 border-t border-slate-200 pt-6">
-              <p className="text-sm font-semibold text-slate-900 mb-4">Patient Documents</p>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-4">
-                <p className="text-sm text-slate-900 whitespace-pre-wrap">{referral.patient_documents}</p>
+              <p className="text-sm font-semibold text-slate-900 mb-2">Attachment</p>
+              <div className="rounded-lg bg-white border border-slate-200 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Paperclip className="h-5 w-5 text-slate-600" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{((referral.attachmentUrl || '').split('/').pop() || 'attachment').replace(/^\d+-/, '')}</p>
+                    <p className="text-xs text-slate-500">Uploaded via referral</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href={referral.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    <span>Preview</span>
+                  </a>
+                  <a href={referral.attachmentUrl} download className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                    <Download className="h-4 w-4" />
+                    <span>Download</span>
+                  </a>
+                </div>
               </div>
             </div>
           )}

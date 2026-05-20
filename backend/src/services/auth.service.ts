@@ -15,6 +15,10 @@ export class AuthService {
       throw new AppError(401, 'Invalid email or password');
     }
 
+    if (user.isDeleted || user.deletedAt) {
+      throw new AppError(403, 'Account has been deleted or is no longer available.');
+    }
+
     if (!user.isActive) {
       throw new AppError(403, 'Account is not active. Please wait for admin approval.');
     }
@@ -99,6 +103,10 @@ export class AuthService {
 
     if (!user) {
       throw new AppError(401, 'User not found');
+    }
+
+    if (user.isDeleted || user.deletedAt) {
+      throw new AppError(401, 'User account is deleted');
     }
 
     return user;

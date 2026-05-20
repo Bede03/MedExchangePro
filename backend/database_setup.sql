@@ -40,6 +40,9 @@ CREATE TABLE "users" (
   "password" VARCHAR(500) NOT NULL,
   "role" TEXT NOT NULL CHECK ("role" IN ('admin', 'clinician', 'registrar', 'hospital_staff')),
   "hospital_id" TEXT NOT NULL,
+  "is_active" BOOLEAN NOT NULL DEFAULT FALSE,
+  "is_deleted" BOOLEAN NOT NULL DEFAULT FALSE,
+  "deleted_at" TIMESTAMP NULL,
   "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "fk_users_hospital" FOREIGN KEY ("hospital_id") REFERENCES "hospitals"("id") ON DELETE CASCADE

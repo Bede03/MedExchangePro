@@ -20,11 +20,7 @@ export interface PatientProfile {
   sourceSystem?: string;
 }
 
-export interface Hospital {
-  id: string;
-  name: string;
-  location: string;
-}
+// Hospital interface (defined once below with optional location)
 
 export type Gender = 'male' | 'female' | 'other';
 
@@ -63,6 +59,7 @@ export interface Referral {
   current_medications?: string;
   diagnoses?: string;
   vitals?: string;
+  attachmentUrl?: string;
   reason: string;
   status: ReferralStatus;
   priority: ReferralPriority;

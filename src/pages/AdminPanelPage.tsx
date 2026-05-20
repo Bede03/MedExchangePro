@@ -22,7 +22,7 @@ type UserWithMeta = {
 
 export function AdminPanelPage() {
   const { user } = useAuth();
-  const { hospitals, users, updateUser, addUser, addHospital, updateHospital, deleteHospital, auditLogs, referrals } = useMockData();
+  const { hospitals, users, updateUser, deleteUser, addUser, addHospital, updateHospital, deleteHospital, auditLogs, referrals } = useMockData();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [expandedHospital, setExpandedHospital] = useState<string | null>(null);
 
@@ -61,12 +61,19 @@ export function AdminPanelPage() {
     [users, user?.hospital_id]
   );
 
-  const [activeMap, setActiveMap] = useState<Record<string, boolean>>(() =>
-    hospitalUsers.reduce((acc, u) => {
-      acc[u.id] = true;
-      return acc;
-    }, {} as Record<string, boolean>)
-  );
+  const [activeMap, setActiveMap] = useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    setActiveMap((prev) => {
+      const next = { ...prev };
+      hospitalUsers.forEach((u) => {
+        if (next[u.id] === undefined) {
+          next[u.id] = u.active ?? false;
+        }
+      });
+      return next;
+    });
+  }, [hospitalUsers]);
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
@@ -169,7 +176,7 @@ export function AdminPanelPage() {
       if (normalized) {
         const matchesSearch = (
           h.name.toLowerCase().includes(normalized) ||
-          h.location.toLowerCase().includes(normalized) ||
+          (h.location ?? '').toLowerCase().includes(normalized) ||
           h.id.toLowerCase().includes(normalized)
         );
         if (!matchesSearch) return false;
@@ -243,7 +250,7 @@ export function AdminPanelPage() {
       ...u,
       joined_at: userMetadata[u.id]?.joined_at || new Date(2026, 2, 4 + idx).toISOString(),
       last_updated: userMetadata[u.id]?.last_updated || new Date(2026, 2, 10 + idx).toISOString(),
-      active: activeMap[u.id] ?? true,
+      active: activeMap[u.id] ?? u.active ?? false,
     }));
   }, [hospitalUsers, activeMap, userMetadata]);
 
@@ -353,11 +360,22 @@ export function AdminPanelPage() {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
+  const [deleteUserFeedback, setDeleteUserFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const userToDelete = useMemo(
     () => hospitalUsers.find((u) => u.id === deleteUserId) ?? null,
     [hospitalUsers, deleteUserId]
   );
+
+  React.useEffect(() => {
+    if (!deleteUserFeedback) return;
+
+    const timer = window.setTimeout(() => {
+      setDeleteUserFeedback(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, [deleteUserFeedback]);
 
   async function handleDeleteUser() {
     if (!userToDelete) return;
@@ -367,18 +385,21 @@ export function AdminPanelPage() {
       const response = await apiClient.users.delete(userToDelete.id);
       
       if (response.success) {
-        // Refresh users list by calling the API or removing from local state
-        alert('User deleted successfully');
+        deleteUser(userToDelete.id);
+        setActiveMap((prev) => {
+          const next = { ...prev };
+          delete next[userToDelete.id];
+          return next;
+        });
+        setDeleteUserFeedback({ type: 'success', message: 'User deleted successfully.' });
         setShowDeleteConfirm(false);
         setDeleteUserId(null);
-        // The user list will auto-refresh via the useMockData hook or you can manually update it
-        // For now, we'll just close the modals
       } else {
-        alert(response.message || 'Failed to delete user');
+        setDeleteUserFeedback({ type: 'error', message: response.message || 'Failed to delete user.' });
       }
     } catch (err: any) {
       console.error('Failed to delete user:', err);
-      alert(err.message || 'Failed to delete user');
+      setDeleteUserFeedback({ type: 'error', message: err.message || 'Failed to delete user.' });
     } finally {
       setDeletingUser(false);
     }
@@ -402,13 +423,24 @@ export function AdminPanelPage() {
   React.useEffect(() => {
     if (editingHospital) {
       setEditHospitalName(editingHospital.name);
-      setEditHospitalLocation(editingHospital.location);
+      setEditHospitalLocation(editingHospital.location ?? '');
       setShowEditHospitalModal(true);
     }
   }, [editingHospital]);
 
-  const toggleActive = (id: string) => {
-    setActiveMap((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleActive = async (id: string) => {
+    const currentValue = activeMap[id] ?? false;
+    const nextValue = !currentValue;
+
+    setActiveMap((prev) => ({ ...prev, [id]: nextValue }));
+
+    try {
+      await updateUser(id, { active: nextValue });
+    } catch (error: any) {
+      setActiveMap((prev) => ({ ...prev, [id]: currentValue }));
+      console.error('Failed to update user active status:', error);
+      alert('Failed to update user status. Please try again.');
+    }
   };
 
   const toggleHospitalActive = (id: string) => {
@@ -420,6 +452,7 @@ export function AdminPanelPage() {
       updateUser(editingUser.id, {
         full_name: editFullName,
         role: editRole,
+        active: editActive,
         ...(editPassword.trim() && { password: editPassword }),
       });
       setActiveMap((prev) => ({ ...prev, [editingUser.id]: editActive }));
@@ -453,6 +486,33 @@ export function AdminPanelPage() {
           {hospitalName}    Manage users, hospitals, audit logs, and monitor activity
         </p>
       </header>
+
+      {deleteUserFeedback && (
+        <div className="fixed right-4 top-20 z-50 w-full max-w-sm rounded-2xl border p-4 shadow-xl ring-1 ring-slate-200 bg-white">
+          <div className="flex items-start gap-3">
+            <div className={`mt-1 rounded-full p-2 ${deleteUserFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+              {deleteUserFeedback.type === 'success' ? (
+                <Check className="h-5 w-5" />
+              ) : (
+                <AlertCircle className="h-5 w-5" />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-900">
+                {deleteUserFeedback.type === 'success' ? 'User deleted' : 'Delete failed'}
+              </p>
+              <p className="mt-1 text-sm text-slate-600">{deleteUserFeedback.message}</p>
+            </div>
+            <button
+              onClick={() => setDeleteUserFeedback(null)}
+              className="text-slate-400 hover:text-slate-600 transition"
+              aria-label="Close notification"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 text-sm">
         <button
@@ -792,7 +852,7 @@ export function AdminPanelPage() {
                   header: 'Status',
                   accessor: (row: UserWithMeta) => (
                     <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
-                      {(activeMap[row.id] ?? true) ? 'Active' : 'Inactive'}
+                      {(activeMap[row.id] ?? row.active ?? false) ? 'Active' : 'Inactive'}
                     </span>
                   ),
                 },
@@ -1817,7 +1877,7 @@ export function AdminPanelPage() {
               <div className="flex-1">
                 <h2 className="text-lg font-semibold text-slate-900">Delete User</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  This action cannot be undone. The user will be permanently deleted from the system.
+                  This action cannot be undone for the active user list. The user will be removed from active accounts.
                 </p>
               </div>
               <button

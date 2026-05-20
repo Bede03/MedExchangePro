@@ -89,6 +89,7 @@ export const createReferralSchema = z.object({
     .refine((value) => value.length > 0, {
       message: `Department must be one of: ${DEPARTMENTS.join(', ')}`,
     }),
+  attachmentUrl: z.string().url().optional(),
   receivingHospitalId: z.string().min(1, 'Receiving hospital is required'),
 });
 
@@ -96,7 +97,8 @@ export const updateReferralSchema = z.object({
   status: z.enum(['pending', 'approved', 'completed', 'rejected']).optional(),
   reason: z.string().min(10).optional(),
   priority: z.enum(['Emergency', 'Urgent', 'Routine']).optional(),
-  department: z.enum(DEPARTMENTS as any).optional(),
+  department: z.union([z.array(z.enum(DEPARTMENTS as any)), z.enum(DEPARTMENTS as any)]).optional(),
+  attachmentUrl: z.string().url().optional(),
 });
 
 // Shared Patient Records Schema

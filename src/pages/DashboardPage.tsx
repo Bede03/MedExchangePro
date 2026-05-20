@@ -80,7 +80,8 @@ export function DashboardPage() {
     };
   }, [filteredPatients.length, filteredReferrals, transfersForUser]);
 
-  const recent = filteredReferrals.slice(0, 5);
+  const recentReferrals = filteredReferrals.slice(0, 10);
+  const recentTransfers = transfersForUser.slice(0, 10);
 
   useEffect(() => {
     if (!user) return;
@@ -269,11 +270,11 @@ export function DashboardPage() {
         </div>
 
         {activeSection === 'referrals' ? (
-          recent.length === 0 ? (
+          recentReferrals.length === 0 ? (
             <p className="mt-4 text-sm text-slate-500">No referrals yet.</p>
           ) : (
-            <div className="mt-4 space-y-3">
-              {recent.map((referral) => {
+            <div className="mt-4 overflow-hidden overflow-y-auto pr-2 sm:pr-0 space-y-3 rounded-xl" style={{ minHeight: '20rem', maxHeight: '20rem' }}>
+              {recentReferrals.map((referral) => {
                 const requestingHospital = hospitalMap.get(referral.requesting_hospital_id) ?? '';
                 const receivingHospital = hospitalMap.get(referral.receiving_hospital_id) ?? '';
                 const logoLabel = getInitials(referral.patient_name);
@@ -305,11 +306,11 @@ export function DashboardPage() {
           )
         ) : (
           // Transfers list
-          <div className="mt-4 space-y-3">
-            {transfersForUser.length === 0 ? (
+          <div className="mt-4 overflow-hidden overflow-y-auto pr-2 sm:pr-0 space-y-3 rounded-xl" style={{ minHeight: '20rem', maxHeight: '24rem' }}>
+            {recentTransfers.length === 0 ? (
               <p className="mt-4 text-sm text-slate-500">No transfers yet.</p>
             ) : (
-              transfersForUser.slice(0, 5).map((t) => {
+              recentTransfers.map((t) => {
                 const from = hospitalMap.get(t.fromHospitalId) ?? t.fromHospital?.name ?? '';
                 const to = hospitalMap.get(t.toHospitalId) ?? t.toHospital?.name ?? '';
                 const logo = getInitials(t.patientName || t.patient_name || 'PT');

@@ -37,11 +37,8 @@ export class UserService {
       password: hashedPassword,
       role: data.role,
       hospitalId: data.hospitalId,
+      isActive: typeof data.isActive === 'boolean' ? data.isActive : false,
     };
-
-    if (typeof data.isActive === 'boolean') {
-      createData.isActive = data.isActive;
-    }
 
     const user = await prisma.user.create({
       data: createData,
@@ -71,6 +68,8 @@ export class UserService {
         createdAt: true,
         updatedAt: true,
         isActive: true,
+        isDeleted: true,
+        deletedAt: true,
       },
     });
 
@@ -83,7 +82,7 @@ export class UserService {
 
   async getUsersByHospital(hospitalId: string) {
     return await prisma.user.findMany({
-      where: { hospitalId },
+      where: { hospitalId, isDeleted: false },
       select: {
         id: true,
         fullName: true,
@@ -156,14 +155,19 @@ export class UserService {
   }
 
   async deleteUser(id: string) {
-    await prisma.user.delete({
+    await prisma.user.update({
       where: { id },
+      data: {
+        isDeleted: true,
+        isActive: false,
+      },
     });
   }
 
   async getAllUsers(currentUser: JwtPayload) {
     if (currentUser.role === 'admin') {
       return await prisma.user.findMany({
+        where: { isDeleted: false },
         select: {
           id: true,
           fullName: true,
@@ -180,6 +184,7 @@ export class UserService {
     return await prisma.user.findMany({
       where: {
         hospitalId: currentUser.hospitalId,
+        isDeleted: false,
       },
       select: {
         id: true,

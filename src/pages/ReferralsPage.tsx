@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Eye, Check } from 'lucide-react';
+import { Eye, Check, Paperclip } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
@@ -74,6 +74,7 @@ export function ReferralsPage() {
       receiving_hospital_id: ref.receivingHospitalId,
       created_at: ref.createdAt,
       department: ref.department,
+      attachmentUrl: ref.attachmentUrl || ref.attachment_url || null,
     }));
 
     const allowedReferrals = mappedReferrals.filter(
@@ -415,18 +416,30 @@ export function ReferralsPage() {
             accessor: (row) => <StatusBadge status={row.status} />,
           },
           {
-            header: 'Actions',
+            header: 'Attachment',
             accessor: (row) => (
-              <Link
-                to={`/referrals/${row.id}`}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-              >
-                <Eye className="h-4 w-4" />
-                View
-              </Link>
+              row.attachmentUrl ? (
+                <a href={row.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-slate-700 hover:text-indigo-600">
+                  <Paperclip className="h-4 w-4" />
+                  <span className="truncate max-w-[160px]">{(row.attachmentUrl.split('/').pop() || 'attachment').replace(/^\d+-/, '')}</span>
+                </a>
+              ) : (
+                <span className="text-sm text-slate-400">—</span>
+              )
             ),
-            className: 'text-right',
           },
+            { header: 'Actions',
+              accessor: (row) => (
+                <Link
+                  to={`/referrals/${row.id}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                >
+                  <Eye className="h-4 w-4" />
+                  View
+                </Link>
+              ),
+              className: 'text-right',
+            },
         ]}
         />
       )}
