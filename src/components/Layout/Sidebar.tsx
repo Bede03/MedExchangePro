@@ -12,22 +12,20 @@ export function Sidebar() {
   const hospital = hospitals.find((h) => h.id === user?.hospital_id);
 
   const links = React.useMemo(() => {
-    const base = [
+    if (user?.role === 'admin') {
+      return [
+        { to: '/admin', label: 'Admin Panel', icon: Users },
+        { to: '/reports', label: 'Reports', icon: BarChart3 },
+      ];
+    }
+
+    return [
       { to: '/dashboard', label: 'Dashboard', icon: Home },
       { to: '/patients', label: 'Patients', icon: ClipboardList },
       { to: '/referrals', label: 'Referrals', icon: FileText },
       { to: '/transfers', label: 'Transfers', icon: Building },
       { to: '/reports', label: 'Reports', icon: BarChart3 },
     ];
-
-    if (user?.role === 'admin') {
-      return [
-        ...base,
-        { to: '/admin', label: 'Admin Panel', icon: Users },
-      ];
-    }
-
-    return base;
   }, [user?.role]);
 
   return (

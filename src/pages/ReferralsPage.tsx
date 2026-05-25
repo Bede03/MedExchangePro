@@ -179,7 +179,7 @@ export function ReferralsPage() {
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              Requested
+              Submitted
             </button>
             <button
               type="button"
@@ -363,85 +363,88 @@ export function ReferralsPage() {
           <p className="text-slate-500">No referrals found. Create your first referral to get started.</p>
         </div>
       ) : (
-        <Table
-        data={dataWithIndex}
-        rowKey={(row) => row.id}
-        columns={[
-          {
-            header: 'Ref #',
-            accessor: (row) => <span className="font-medium text-indigo-600">REF-{String(row.displayIndex).padStart(4, '0')}</span>,
-          },
-          {
-            header: 'Patient',
-            accessor: (row) => (
-              <Link
-                to={`/patients/${row.patient_national_id || row.patient_id}`}
-                className="font-medium text-indigo-600 hover:text-indigo-800"
-              >
-                {row.patient_name}
-              </Link>
-            ),
-          },
-          {
-            header: 'From',
-            accessor: (row) => hospitalMap.get(row.requesting_hospital_id) ?? 'Unknown',
-          },
-          {
-            header: 'To',
-            accessor: (row) => hospitalMap.get(row.receiving_hospital_id) ?? 'Unknown',
-          },
-          {
-            header: 'Priority',
-            accessor: (row) => (
-              <span
-                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                  row.priority === 'Emergency'
-                    ? 'bg-rose-100 text-rose-800'
-                    : row.priority === 'Urgent'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-slate-100 text-slate-800'
-                }`}
-              >
-                {row.priority}
-              </span>
-            ),
-          },
-          { header: 'Reason', accessor: 'reason' },
-          {
-            header: 'Date',
-            accessor: (row) => new Date(row.created_at).toLocaleDateString('en-GB'),
-          },
-          {
-            header: 'Status',
-            accessor: (row) => <StatusBadge status={row.status} />,
-          },
-          {
-            header: 'Attachment',
-            accessor: (row) => (
-              row.attachmentUrl ? (
-                <a href={row.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-slate-700 hover:text-indigo-600">
-                  <Paperclip className="h-4 w-4" />
-                  <span className="truncate max-w-[160px]">{(row.attachmentUrl.split('/').pop() || 'attachment').replace(/^\d+-/, '')}</span>
-                </a>
-              ) : (
-                <span className="text-sm text-slate-400">—</span>
-              )
-            ),
-          },
-            { header: 'Actions',
-              accessor: (row) => (
-                <Link
-                  to={`/referrals/${row.id}`}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-                >
-                  <Eye className="h-4 w-4" />
-                  View
-                </Link>
-              ),
-              className: 'text-right',
-            },
-        ]}
-        />
+        <div className="w-full max-w-none overflow-x-auto">
+          <Table
+            data={dataWithIndex}
+            rowKey={(row) => row.id}
+            columns={[
+              {
+                header: 'Ref ',
+                accessor: (row) => <span className="font-medium text-indigo-600">REF-{String(row.displayIndex).padStart(4, '0')}</span>,
+              },
+              {
+                header: 'Patient',
+                accessor: (row) => (
+                  <Link
+                    to={`/patients/${row.patient_national_id || row.patient_id}`}
+                    className="font-medium text-indigo-600 hover:text-indigo-800"
+                  >
+                    {row.patient_name}
+                  </Link>
+                ),
+              },
+              {
+                header: 'From',
+                accessor: (row) => hospitalMap.get(row.requesting_hospital_id) ?? 'Unknown',
+              },
+              {
+                header: 'To',
+                accessor: (row) => hospitalMap.get(row.receiving_hospital_id) ?? 'Unknown',
+              },
+              {
+                header: 'Priority',
+                accessor: (row) => (
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                      row.priority === 'Emergency'
+                        ? 'bg-rose-100 text-rose-800'
+                        : row.priority === 'Urgent'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-slate-100 text-slate-800'
+                    }`}
+                  >
+                    {row.priority}
+                  </span>
+                ),
+              },
+              { header: 'Reason', accessor: 'reason' },
+              {
+                header: 'Date',
+                accessor: (row) => new Date(row.created_at).toLocaleDateString('en-GB'),
+              },
+              {
+                header: 'Status',
+                accessor: (row) => <StatusBadge status={row.status} />,
+              },
+              {
+                header: 'Attachment',
+                accessor: (row) => (
+                  row.attachmentUrl ? (
+                    <a href={row.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-slate-700 hover:text-indigo-600">
+                      <Paperclip className="h-4 w-4" />
+                      <span className="truncate max-w-[160px]">{(row.attachmentUrl.split('/').pop() || 'attachment').replace(/^\d+-/, '')}</span>
+                    </a>
+                  ) : (
+                    <span className="text-sm text-slate-400">—</span>
+                  )
+                ),
+              },
+              {
+                header: 'Actions',
+                accessor: (row) => (
+                  <Link
+                    to={`/referrals/${row.id}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View
+                  </Link>
+                ),
+                className: 'text-right',
+              },
+            ]}
+          />
+        </div>
       )}
 
       {/* Pagination Controls */}

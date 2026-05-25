@@ -30,6 +30,8 @@ export function AdminPanelPage() {
   const [auditActionFilter, setAuditActionFilter] = useState('All Actions');
   const [auditStartDate, setAuditStartDate] = useState('');
   const [auditEndDate, setAuditEndDate] = useState('');
+  const [auditCurrentPage, setAuditCurrentPage] = useState(1);
+  const auditPageSize = 10;
 
   // Filter audit logs based on selected action
   const filteredAuditLogs = useMemo(() => {
@@ -52,6 +54,12 @@ export function AdminPanelPage() {
       return true;
     });
   }, [auditLogs, auditActionFilter, auditStartDate, auditEndDate]);
+
+  const auditTotalPages = Math.max(1, Math.ceil(filteredAuditLogs.length / auditPageSize));
+  const auditPageLogs = useMemo(() => {
+    const start = (auditCurrentPage - 1) * auditPageSize;
+    return filteredAuditLogs.slice(start, start + auditPageSize);
+  }, [filteredAuditLogs, auditCurrentPage]);
 
   const hospitalName = hospitals.find((h) => h.id === user?.hospital_id)?.name ?? '';
 
@@ -1249,7 +1257,10 @@ export function AdminPanelPage() {
           <div className="flex gap-4 mb-6 flex-wrap">
             <select
               value={auditActionFilter}
-              onChange={(e) => setAuditActionFilter(e.target.value)}
+              onChange={(e) => {
+                setAuditActionFilter(e.target.value);
+                setAuditCurrentPage(1);
+              }}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm bg-white text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
               <option>All Actions</option>
@@ -1262,7 +1273,10 @@ export function AdminPanelPage() {
             <input
               type="date"
               value={auditStartDate}
-              onChange={(e) => setAuditStartDate(e.target.value)}
+              onChange={(e) => {
+                setAuditStartDate(e.target.value);
+                setAuditCurrentPage(1);
+              }}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm bg-white text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               placeholder="dd/mm/yyyy"
             />
@@ -1270,14 +1284,17 @@ export function AdminPanelPage() {
             <input
               type="date"
               value={auditEndDate}
-              onChange={(e) => setAuditEndDate(e.target.value)}
+              onChange={(e) => {
+                setAuditEndDate(e.target.value);
+                setAuditCurrentPage(1);
+              }}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm bg-white text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               placeholder="dd/mm/yyyy"
             />
           </div>
 
           <Table
-            data={filteredAuditLogs}
+            data={auditPageLogs}
             rowKey={(row) => row.id}
             columns={[
               { header: 'Action', accessor: 'action' },
@@ -1304,8 +1321,31 @@ export function AdminPanelPage() {
             ]}
           />
 
-          <div className="mt-4 text-sm text-slate-500">
-            Showing 1–{filteredAuditLogs.length} of {auditLogs.length}
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-500">
+              Showing {(auditCurrentPage - 1) * auditPageSize + 1}–{Math.min(auditCurrentPage * auditPageSize, filteredAuditLogs.length)} of {filteredAuditLogs.length}
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setAuditCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={auditCurrentPage === 1}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-slate-500">
+                Page {auditCurrentPage} of {auditTotalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAuditCurrentPage((prev) => Math.min(auditTotalPages, prev + 1))}
+                disabled={auditCurrentPage === auditTotalPages}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}

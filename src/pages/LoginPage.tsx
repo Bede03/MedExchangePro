@@ -18,9 +18,9 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      // Always redirect to dashboard after successful login
-      navigate('/dashboard', { replace: true });
+      const authenticatedUser = await login(email, password);
+      const destination = authenticatedUser.role === 'admin' ? '/admin' : '/dashboard';
+      navigate(destination, { replace: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {

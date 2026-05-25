@@ -749,7 +749,18 @@ export function ReferralDetailsPage() {
                   {respondingHospitalPatientData.lab_results && (
                     <div className="rounded-lg bg-purple-50 border border-purple-200 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">Lab Results</p>
-                      <p className="mt-1 text-sm text-purple-900 whitespace-pre-wrap">{respondingHospitalPatientData.lab_results}</p>
+                      <div className="mt-1 text-sm text-purple-900 whitespace-pre-wrap">
+                        {respondingHospitalPatientData.lab_results
+                          .split(';')
+                          .map((item: string) => item.trim())
+                          .filter(Boolean)
+                          .map((item: string, index: number, array: string[]) => (
+                            <React.Fragment key={index}>
+                              {item}{array.length - 1 !== index ? ';' : ''}
+                              <br />
+                            </React.Fragment>
+                          ))}
+                      </div>
                     </div>
                   )}
                   {respondingHospitalPatientData.diagnoses && (
@@ -855,7 +866,18 @@ export function ReferralDetailsPage() {
                   {sharedRecords.testResults && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Test Results</p>
-                      <p className="mt-1 text-sm text-slate-900">{sharedRecords.testResults}</p>
+                      <div className="mt-1 text-sm text-slate-900 space-y-1">
+                        {sharedRecords.testResults
+                          .split(';')
+                          .map((item: string) => item.trim())
+                          .filter(Boolean)
+                          .map((item: string, index: number, array: string[]) => (
+                            <div key={index}>
+                              {item}
+                              {index < array.length - 1 ? ';' : ''}
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   )}
                   {sharedRecords.medications && (

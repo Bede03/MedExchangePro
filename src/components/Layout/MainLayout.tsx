@@ -23,7 +23,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div className="flex flex-1 flex-col bg-slate-50 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-auto px-6 py-6 flex flex-col">
-          <div className="mx-auto w-full max-w-6xl flex-1">
+          <div className="mx-auto w-full max-w-7xl flex-1">
             {children || <Outlet />}
           </div>
           <Footer />

@@ -230,12 +230,9 @@ export function NewTransferPage() {
             Back to Transfers
           </button>
           <h1 className="mt-4 text-2xl font-semibold text-slate-900 md:mt-0">Create Transfer</h1>
-          <p className="text-sm text-slate-500">Capture the essential clinical transfer information for a safe handover.</p>
+          <p className="text-sm text-slate-500">Use this form to send patient information, clinical findings, vitals, transport details, and handover notes to the receiving hospital.</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 shadow-sm">
-          Use this form to send patient information, clinical findings, vitals, transport details, and handover notes to the receiving hospital.
-        </div>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-8 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">

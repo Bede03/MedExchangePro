@@ -5,7 +5,7 @@ import { apiClient } from '../services/api';
 interface AuthContextValue {
   user: User | null;
   users: User[];
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   signup: (full_name: string, email: string, password: string, role: User['role'], hospital_id: string) => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verifyUser();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -119,7 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(formattedUser));
 
         setUser(formattedUser);
+        return formattedUser;
       }
+
+      throw new Error('Login failed');
     } catch (err: any) {
       const message = err.message || 'Login failed';
       setError(message);
