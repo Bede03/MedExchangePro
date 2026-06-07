@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { Table } from '../components/UI/Table';
+import ExcelJS from 'exceljs';
 import { User, AuditLog } from '../types';
 import { apiClient } from '../services/api';
 import { Pencil, X, Download, Users, Building2, FileText, Trash2, Check, LayoutDashboard, Activity, Eye, EyeOff, AlertCircle, ChevronDown, Stethoscope } from 'lucide-react';
@@ -1227,10 +1228,9 @@ export function AdminPanelPage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-900">Audit Logs</h2>
             <button
-              onClick={() => {
-                // Convert audit logs to CSV
+              onClick={async () => {
                 const headers = ['Action', 'Entity Type', 'Entity ID', 'User ID', 'IP Address', 'Details', 'Timestamp'];
-                const rows = auditLogs.map(log => [
+                const rows = auditLogs.map((log) => [
                   log.action,
                   log.entity_type,
                   log.entity_id,
@@ -1239,18 +1239,53 @@ export function AdminPanelPage() {
                   JSON.stringify(log.details),
                   log.timestamp,
                 ]);
-                const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-                const blob = new Blob([csv], { type: 'text/csv' });
+
+                const workbook = new ExcelJS.Workbook();
+                workbook.creator = 'MedExchange';
+                workbook.created = new Date();
+                const sheet = workbook.addWorksheet('Audit Logs');
+
+                sheet.columns = [
+                  { header: 'Action', key: 'action', width: 22, style: { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' } } },
+                  { header: 'Entity Type', key: 'entityType', width: 18, style: { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' } } },
+                  { header: 'Entity ID', key: 'entityId', width: 28, style: { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' } } },
+                  { header: 'User ID', key: 'userId', width: 24, style: { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' } } },
+                  { header: 'IP Address', key: 'ipAddress', width: 18, style: { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' } } },
+                  { header: 'Details', key: 'details', width: 48, style: { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' } } },
+                  { header: 'Timestamp', key: 'timestamp', width: 22, style: { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' } } },
+                ];
+
+                sheet.getRow(1).font = { name: 'Calibri', size: 11, bold: true };
+                sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+                sheet.addRows(rows.map((row) => ({
+                  action: row[0],
+                  entityType: row[1],
+                  entityId: row[2],
+                  userId: row[3],
+                  ipAddress: row[4],
+                  details: row[5],
+                  timestamp: row[6],
+                })));
+
+                sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+                  if (rowNumber > 1) {
+                    row.height = 18;
+                  }
+                });
+
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+                a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.xlsx`;
                 a.click();
+                window.URL.revokeObjectURL(url);
               }}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition"
             >
               <Download className="h-4 w-4" />
-              Export CSV
+              Export XLSX
             </button>
           </div>
 
