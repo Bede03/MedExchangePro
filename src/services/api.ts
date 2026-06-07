@@ -1,5 +1,5 @@
 // API Service for backend communication
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 export const apiClient = {
   // Get token from localStorage

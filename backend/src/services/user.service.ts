@@ -165,22 +165,6 @@ export class UserService {
   }
 
   async getAllUsers(currentUser: JwtPayload) {
-    if (currentUser.role === 'admin') {
-      return await prisma.user.findMany({
-        where: { isDeleted: false },
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          hospitalId: true,
-          createdAt: true,
-          updatedAt: true,
-          isActive: true,
-        },
-      });
-    }
-
     return await prisma.user.findMany({
       where: {
         hospitalId: currentUser.hospitalId,

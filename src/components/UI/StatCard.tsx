@@ -42,8 +42,8 @@ export function StatCard({ title, value, icon, color = 'blue' }: StatCardProps) 
     <div className={`rounded-lg border p-4 shadow-sm ${colors.background} ${colors.border}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-slate-600">{title}</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+          <p className="text-base font-semibold text-black dark:text-black">{title}</p>
+          <p className="mt-2 text-3xl font-bold text-black dark:text-black">{value}</p>
         </div>
         {icon ? (
           <div className={`flex h-10 w-10 items-center justify-center rounded-full ${colors.icon}`}>

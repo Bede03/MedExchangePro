@@ -929,8 +929,8 @@ export function ReferralDetailsPage() {
         </div>
       )}
       {showConfirmModal && canApproveOrReject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 px-4 py-6">
+          <div className="w-full max-w-2xl max-h-[calc(100vh-4rem)] overflow-hidden overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
             <div className="flex items-start gap-3">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                 <Send className="h-5 w-5 text-blue-600" />
@@ -1081,8 +1081,8 @@ export function ReferralDetailsPage() {
 
       {/* Confirm Reject Referral Modal */}
       {showRejectModal && canApproveOrReject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 px-4 py-6">
+          <div className="w-full max-w-md max-h-[calc(100vh-4rem)] overflow-hidden overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
             <div className="flex items-start gap-3">
               <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                 <AlertCircle className="h-5 w-5 text-red-600" />

@@ -88,9 +88,14 @@ export class AuditService {
     startDate?: Date,
     endDate?: Date,
     limit: number = 100,
-    skip: number = 0
+    skip: number = 0,
+    hospitalId?: string
   ) {
     const where: any = {};
+
+    if (hospitalId) {
+      where.user = { hospitalId };
+    }
 
     if (action) {
       where.action = action;
@@ -118,8 +123,15 @@ export class AuditService {
     });
   }
 
-  async getDistinctActions() {
+  async getDistinctActions(hospitalId?: string) {
+    const where: any = {};
+
+    if (hospitalId) {
+      where.user = { hospitalId };
+    }
+
     const logs = await prisma.auditLog.findMany({
+      where,
       distinct: ['action'],
       select: {
         action: true,
@@ -135,9 +147,14 @@ export class AuditService {
     startDate?: Date,
     endDate?: Date,
     limit: number = 10,
-    skip: number = 0
+    skip: number = 0,
+    hospitalId?: string
   ) {
     const where: any = {};
+
+    if (hospitalId) {
+      where.user = { hospitalId };
+    }
 
     if (action && action !== 'All Actions') {
       where.action = action;

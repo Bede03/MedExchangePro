@@ -102,9 +102,9 @@ export function NotificationsPanel() {
       {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-lg p-2 hover:bg-slate-100 transition"
+        className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition"
       >
-        <Bell className="h-5 w-5 text-slate-700" />
+        <Bell className="h-5 w-5 text-white" />
         {unreadCount > 0 && (
           <span className="absolute top-0 right-0 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
             {unreadCount > 9 ? '9+' : unreadCount}

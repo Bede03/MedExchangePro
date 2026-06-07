@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AppNotification, Hospital, Patient, Referral, User, AuditLog } from '../types';
+import { AppNotification, Hospital, Patient, Referral, User, AuditLog, Transfer } from '../types';
 import { apiClient } from '../services/api';
 
 export function useMockData() {
@@ -7,6 +7,7 @@ export function useMockData() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [notifications] = useState<AppNotification[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +72,43 @@ export function useMockData() {
           attachmentUrl: r.attachmentUrl || r.attachment_url || null,
         }));
         setReferrals(mappedReferrals);
+
+        // Fetch transfers
+        const transfersRes = await apiClient.transfers.list();
+        const transferData = transfersRes.data || [];
+        const mappedTransfers = transferData.map((t: any) => ({
+          id: t.id,
+          transferNumber: t.transferNumber,
+          transferId: t.transferId || t.id,
+          patientNationalId: t.patientNationalId || t.patient_national_id || null,
+          patientName: t.patientName || t.patient_name || t.patient?.name || '',
+          fromHospitalId: t.fromHospitalId || t.from_hospital_id || t.fromHospital?.id || '',
+          toHospitalId: t.toHospitalId || t.to_hospital_id || t.toHospital?.id || '',
+          transferType: t.transferType || t.transfer_type,
+          status: t.status,
+          reasonForTransfer: t.reasonForTransfer || t.reason_for_transfer || t.reason || '',
+          significantFindings: t.significantFindings || t.significant_findings,
+          clinicalPresentation: t.clinicalPresentation || t.clinical_presentation,
+          immediateCondition: t.immediateCondition || t.immediate_condition,
+          temperature: t.temperature,
+          spo2: t.spo2,
+          rr: t.rr,
+          pulse: t.pulse,
+          bp: t.bp,
+          weight: t.weight,
+          muac: t.muac,
+          laboratory: t.laboratory,
+          diagnosis: t.diagnosis,
+          procedures: t.procedures,
+          medications: t.medications,
+          transportType: t.transportType || t.transport_type,
+          transportNotes: t.transportNotes || t.transport_notes,
+          insuranceType: t.insuranceType || t.insurance_type,
+          createdAt: t.createdAt || t.created_at,
+          fromHospital: t.fromHospital,
+          toHospital: t.toHospital,
+        }));
+        setTransfers(mappedTransfers);
 
         // Fetch audit logs
         const auditRes = await apiClient.audit.list();
@@ -240,6 +278,7 @@ export function useMockData() {
     patients,
     users,
     referrals,
+    transfers,
     notifications,
     auditLogs,
     addReferral,

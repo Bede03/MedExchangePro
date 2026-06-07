@@ -22,15 +22,30 @@ import kfhOracleRoutes from './routes/kfh-oracle.routes.js';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
-const ALLOWED_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'];
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// CORS middleware configuration - accept both ports for development
-app.use(cors({ 
-  origin: true  // In development, allow any origin; in production use proper validation
-}));
+// CORS middleware configuration - allow the configured frontend origins
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        ALLOWED_ORIGINS.includes(origin) ||
+        origin.endsWith('.ngrok-free.dev') ||
+        origin.endsWith('.ngrok.io')
+      ) {
+        return callback(null, true);
+      }
+      callback(new Error(`CORS policy does not allow access from origin ${origin}`));
+    },
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(loggingMiddleware);

@@ -10,6 +10,10 @@ export const createUser = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
+    if (req.body.hospitalId !== req.user!.hospitalId) {
+      return res.status(403).json({ success: false, message: 'Cannot create users for other hospitals' });
+    }
+
     const user = await userService.createUser(req.body);
 
     // Log audit
@@ -71,6 +75,11 @@ export const getUsersByHospital = async (req: Request, res: Response) => {
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
+    const targetUser = await userService.getUserById(req.params.id);
+    if (targetUser.hospitalId !== req.user!.hospitalId) {
+      return res.status(403).json({ success: false, message: 'Cannot update users from other hospitals' });
+    }
+
     const user = await userService.updateUser(req.params.id, req.body);
 
     // Log audit
@@ -102,6 +111,11 @@ export const deleteUser = async (req: Request, res: Response) => {
   try {
     if (req.user!.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    const targetUser = await userService.getUserById(req.params.id);
+    if (targetUser.hospitalId !== req.user!.hospitalId) {
+      return res.status(403).json({ success: false, message: 'Cannot delete users from other hospitals' });
     }
 
     await userService.deleteUser(req.params.id);

@@ -524,8 +524,8 @@ export function TransferDetailsPage() {
 
               <Section title="Lab Results">
                 {patientInfo?.patient?.labResults?.length > 0 ? (
-                  <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-slate-50">
+                    <table className="min-w-[700px] w-full divide-y divide-slate-200 text-sm">
                       <thead className="bg-slate-100 text-left text-xs uppercase tracking-wide text-slate-600">
                         <tr>
                           <th className="px-4 py-3">Test</th>

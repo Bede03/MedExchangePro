@@ -13,7 +13,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 100;
     const skip = parseInt(req.query.skip as string) || 0;
 
-    const logs = await auditService.getAuditLogs(limit, skip);
+    const logs = await auditService.getAuditLogsByHospital(req.user!.hospitalId, limit, skip);
 
     res.json({
       success: true,
@@ -66,7 +66,8 @@ export const filterAuditLogs = async (req: Request, res: Response) => {
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined,
       parseInt(limit as string),
-      parseInt(skip as string)
+      parseInt(skip as string),
+      req.user!.hospitalId
     );
 
     res.json({
@@ -90,7 +91,7 @@ export const getDistinctActions = async (req: Request, res: Response) => {
       });
     }
 
-    const actions = await auditService.getDistinctActions();
+    const actions = await auditService.getDistinctActions(req.user!.hospitalId);
 
     res.json({
       success: true,
@@ -120,7 +121,8 @@ export const getAuditLogsWithCount = async (req: Request, res: Response) => {
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined,
       parseInt(limit as string),
-      parseInt(skip as string)
+      parseInt(skip as string),
+      req.user!.hospitalId
     );
 
     res.json({

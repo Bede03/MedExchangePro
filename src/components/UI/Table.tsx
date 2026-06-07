@@ -16,7 +16,7 @@ interface TableProps<Row> {
 
 export function Table<Row>({ columns, data, rowKey, emptyMessage = 'No records found.' }: TableProps<Row>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white w-full" style={{ minWidth: '1000px' }}>
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white w-full">
       <table className="min-w-full divide-y divide-slate-200 w-full">
         <thead className="bg-slate-50">
           <tr>
