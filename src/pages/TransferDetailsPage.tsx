@@ -269,90 +269,92 @@ export function TransferDetailsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate('/transfers')}
-          className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Transfers
-        </button>
-      </header>
+    <div className="space-y-6 pb-6">
+      <div className="space-y-4 bg-white py-4">
+        <header className="flex items-center justify-between bg-white">
+          <button
+            type="button"
+            onClick={() => navigate('/transfers')}
+            className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Transfers
+          </button>
+        </header>
 
-      {/* Summary + Tabs */}
-      <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">
-              {transfer.transferNumber != null ? `TRF-${transfer.transferNumber}` : transfer.transferId}
-            </h1>
-            <p className="mt-2 text-slate-600">Transfer Reference</p>
+        {/* Summary + Tabs */}
+        <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold text-slate-900">
+                {transfer.transferNumber != null ? `TRF-${transfer.transferNumber}` : transfer.transferId}
+              </h1>
+              <p className="mt-2 text-slate-600">Transfer Reference</p>
+            </div>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusStyles[transfer.status] || 'bg-slate-100 text-slate-800'}`}>
+              {statusLabel[transfer.status as keyof typeof statusLabel] || transfer.status}
+            </span>
           </div>
-          <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusStyles[transfer.status] || 'bg-slate-100 text-slate-800'}`}>
-            {statusLabel[transfer.status as keyof typeof statusLabel] || transfer.status}
-          </span>
+
+          <div className="mt-8 flex flex-wrap gap-2">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  activeTab === tab ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          {canApproveTransfer && (
+            <div className="mt-4">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleApproveTransfer}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+              >
+                {actionLoading ? 'Approving transfer...' : 'Approve Transfer'}
+              </button>
+              {actionError && <p className="mt-2 text-sm text-rose-600">{actionError}</p>}
+              {actionMessage && <p className="mt-2 text-sm text-emerald-600">{actionMessage}</p>}
+            </div>
+          )}
+
+          {canSendTransfer && (
+            <div className="mt-4">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleSendTransfer}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
+                {actionLoading ? `Sending to ${receivingHospitalName}...` : `Send to ${receivingHospitalName}`}
+              </button>
+              {actionError && <p className="mt-2 text-sm text-rose-600">{actionError}</p>}
+              {actionMessage && <p className="mt-2 text-sm text-emerald-600">{actionMessage}</p>}
+            </div>
+          )}
+
+          {canReceiveTransfer && (
+            <div className="mt-4">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleReceiveTransfer}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-300"
+              >
+                {actionLoading ? 'Receiving transfer...' : 'Transfer received'}
+              </button>
+              {actionError && <p className="mt-2 text-sm text-rose-600">{actionError}</p>}
+              {actionMessage && <p className="mt-2 text-sm text-emerald-600">{actionMessage}</p>}
+            </div>
+          )}
         </div>
-
-        <div className="mt-8 flex flex-wrap gap-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                activeTab === tab ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-              }`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        {canApproveTransfer && (
-          <div className="mt-4">
-            <button
-              type="button"
-              disabled={actionLoading}
-              onClick={handleApproveTransfer}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-            >
-              {actionLoading ? 'Approving transfer...' : 'Approve Transfer'}
-            </button>
-            {actionError && <p className="mt-2 text-sm text-rose-600">{actionError}</p>}
-            {actionMessage && <p className="mt-2 text-sm text-emerald-600">{actionMessage}</p>}
-          </div>
-        )}
-
-        {canSendTransfer && (
-          <div className="mt-4">
-            <button
-              type="button"
-              disabled={actionLoading}
-              onClick={handleSendTransfer}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-            >
-              {actionLoading ? `Sending to ${receivingHospitalName}...` : `Send to ${receivingHospitalName}`}
-            </button>
-            {actionError && <p className="mt-2 text-sm text-rose-600">{actionError}</p>}
-            {actionMessage && <p className="mt-2 text-sm text-emerald-600">{actionMessage}</p>}
-          </div>
-        )}
-
-        {canReceiveTransfer && (
-          <div className="mt-4">
-            <button
-              type="button"
-              disabled={actionLoading}
-              onClick={handleReceiveTransfer}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-300"
-            >
-              {actionLoading ? 'Receiving transfer...' : 'Transfer received'}
-            </button>
-            {actionError && <p className="mt-2 text-sm text-rose-600">{actionError}</p>}
-            {actionMessage && <p className="mt-2 text-sm text-emerald-600">{actionMessage}</p>}
-          </div>
-        )}
       </div>
 
       {activeTab === 'Transfer Details' ? (

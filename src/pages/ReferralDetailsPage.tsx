@@ -422,10 +422,11 @@ export function ReferralDetailsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
+    <div className="space-y-6 pb-6">
+      <div className="border-b border-slate-200 bg-slate-50">
+        <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between px-0 py-4">
+          <div>
+            <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate(-1)}
@@ -498,8 +499,7 @@ export function ReferralDetailsPage() {
         </div>
       </header>
 
-      <div className="mt-4">
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 px-0 pb-4">
           {TABS.map((tab) => (
             <button
               key={tab}

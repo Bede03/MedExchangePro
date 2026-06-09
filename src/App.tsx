@@ -18,6 +18,16 @@ import { AdminAuditLogsPage } from './pages/AdminAuditLogsPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import {
+  HelpCenterPage,
+  ContactUsPage,
+  DocumentationPage,
+  FAQPage,
+  PrivacyPolicyPage,
+  TermsOfServicePage,
+  SecurityPage,
+  CompliancePage,
+} from './pages/SupportLegalPages';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export default function App() {
@@ -47,6 +57,14 @@ export default function App() {
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/hospitals" element={<AdminHospitalsPage />} />
         <Route path="/admin/audit" element={<AdminAuditLogsPage />} />
+        <Route path="/help-center" element={<HelpCenterPage />} />
+        <Route path="/contact-us" element={<ContactUsPage />} />
+        <Route path="/documentation" element={<DocumentationPage />} />
+        <Route path="/faq" element={<FAQPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+        <Route path="/security" element={<SecurityPage />} />
+        <Route path="/compliance" element={<CompliancePage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

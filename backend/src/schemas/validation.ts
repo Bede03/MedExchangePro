@@ -75,7 +75,7 @@ export const createReferralSchema = z.object({
   reason: z
     .union([
       z.array(z.string().min(1)).min(1),
-      z.string().min(10, 'Reason must be at least 10 characters'),
+      z.string().min(1, 'Reason must be at least 1 character'),
     ])
     .transform((value) => (Array.isArray(value) ? value : [value])),
   reasonDetails: z.string().max(500, 'Reason details cannot exceed 500 characters').optional(),
@@ -89,16 +89,40 @@ export const createReferralSchema = z.object({
     .refine((value) => value.length > 0, {
       message: `Department must be one of: ${DEPARTMENTS.join(', ')}`,
     }),
-  attachmentUrl: z.string().url().optional(),
+  attachmentUrl: z
+    .string()
+    .refine((value) => {
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        return /^\/?uploads\/\S+$/.test(value);
+      }
+    }, {
+      message: 'Invalid url',
+    })
+    .optional(),
   receivingHospitalId: z.string().min(1, 'Receiving hospital is required'),
 });
 
 export const updateReferralSchema = z.object({
   status: z.enum(['pending', 'approved', 'completed', 'rejected']).optional(),
-  reason: z.string().min(10).optional(),
+  reason: z.string().min(1).optional(),
   priority: z.enum(['Emergency', 'Urgent', 'Routine']).optional(),
   department: z.union([z.array(z.enum(DEPARTMENTS as any)), z.enum(DEPARTMENTS as any)]).optional(),
-  attachmentUrl: z.string().url().optional(),
+  attachmentUrl: z
+    .string()
+    .refine((value) => {
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        return /^\/?uploads\/\S+$/.test(value);
+      }
+    }, {
+      message: 'Invalid url',
+    })
+    .optional(),
 });
 
 // Shared Patient Records Schema

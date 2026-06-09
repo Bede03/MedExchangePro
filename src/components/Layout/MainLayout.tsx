@@ -19,9 +19,9 @@ export function MainLayout({ children }: MainLayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col overflow-hidden">
-      <div className="flex flex-1 overflow-hidden">
-        <div className="hidden md:flex">
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1">
+        <div className="hidden md:flex sticky top-0 self-start">
           <Sidebar />
         </div>
 
@@ -40,10 +40,10 @@ export function MainLayout({ children }: MainLayoutProps) {
           <Sidebar isMobile onClose={() => setSidebarOpen(false)} />
         </div>
 
-        <div className="flex flex-1 flex-col bg-slate-50 overflow-hidden">
+        <div className="flex flex-1 flex-col bg-slate-50 min-w-0">
           <Navbar onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8 flex flex-col">
-            <div className="mx-auto w-full max-w-7xl flex-1">
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 flex flex-col min-w-0 overflow-x-hidden">
+            <div className="mx-auto w-full max-w-7xl flex-1 min-w-0">
               {children || <Outlet />}
             </div>
           </main>

@@ -161,6 +161,33 @@ export function NewReferralPage() {
     setShowConfirm(true);
   }
 
+  const normalizeAttachmentUrl = (uploadResp: any): string | undefined => {
+    if (!uploadResp || typeof uploadResp !== 'object') return undefined;
+
+    const candidates = [
+      uploadResp?.data?.url,
+      uploadResp?.url,
+      uploadResp?.data?.path,
+      uploadResp?.path,
+      uploadResp?.data?.filePath,
+      uploadResp?.filePath,
+      uploadResp?.attachmentUrl,
+      uploadResp?.attachment_url,
+    ];
+
+    let attachmentUrl = candidates.find(
+      (value) => typeof value === 'string' && value.trim().length > 0
+    ) as string | undefined;
+
+    if (!attachmentUrl) return undefined;
+
+    if (attachmentUrl.startsWith('uploads/')) {
+      attachmentUrl = `/${attachmentUrl}`;
+    }
+
+    return attachmentUrl;
+  };
+
   async function submitReferral() {
     setShowConfirm(false);
     setError(null);
@@ -173,8 +200,7 @@ export function NewReferralPage() {
         const fd = new FormData();
         fd.append('file', attachmentFile);
         const uploadResp: any = await apiClient.uploads.create(fd);
-        // Try several common response shapes
-        attachmentUrl = uploadResp?.data?.url || uploadResp?.url || uploadResp?.path || uploadResp?.data?.path || uploadResp?.attachmentUrl || uploadResp?.attachment_url;
+        attachmentUrl = normalizeAttachmentUrl(uploadResp);
       }
 
       await addReferral({
@@ -415,7 +441,7 @@ export function NewReferralPage() {
 
             <div className="md:col-span-2">
               <label className="text-sm font-medium text-slate-700">Attachment (optional)</label>
-              <div className="mt-2 flex items-center gap-3">
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
                   type="file"
                   className="hidden"
@@ -432,7 +458,7 @@ export function NewReferralPage() {
                 >
                   Choose File
                 </label>
-                <span className="text-sm text-slate-500">{attachmentName}</span>
+                <span className="break-words text-sm text-slate-500">{attachmentName}</span>
               </div>
             </div>
           </div>

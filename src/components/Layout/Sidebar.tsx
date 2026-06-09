@@ -34,7 +34,7 @@ export function Sidebar({ className = '', isMobile = false, onClose }: SidebarPr
   }, [user?.role]);
 
   return (
-    <aside className={`flex h-full w-72 flex-col bg-slate-900 text-white ${className}`}>
+    <aside className={`flex h-screen w-72 flex-col bg-slate-900 text-white ${className}`}>
       <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-6 py-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 text-white">
@@ -56,7 +56,7 @@ export function Sidebar({ className = '', isMobile = false, onClose }: SidebarPr
         ) : null}
       </div>
 
-      <nav className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
+      <nav className="flex flex-1 flex-col px-4 py-6">
         <div className="space-y-1">
           {links.map((link) => {
             const Icon = link.icon;

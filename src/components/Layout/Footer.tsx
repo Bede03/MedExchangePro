@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -26,19 +26,46 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-white">Support</h4>
             <ul className="mt-2 space-y-2 text-xs text-slate-400">
-              <li><a href="#" className="hover:text-white transition">Help Center</a></li>
-              <li><a href="#" className="hover:text-white transition">Contact Us</a></li>
-              <li><a href="#" className="hover:text-white transition">Documentation</a></li>
-              <li><a href="#" className="hover:text-white transition">FAQ</a></li>
+              <li>
+                <Link to="/help-center" className="hover:text-white transition">
+                  Help Center
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact-us" className="hover:text-white transition">
+                  Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="hover:text-white transition">
+                  FAQ
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
             <h4 className="text-sm font-semibold text-white">Legal</h4>
             <ul className="mt-2 space-y-2 text-xs text-slate-400">
-              <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition">Security</a></li>
-              <li><a href="#" className="hover:text-white transition">Compliance</a></li>
+              <li>
+                <Link to="/privacy-policy" className="hover:text-white transition">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms-of-service" className="hover:text-white transition">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link to="/security" className="hover:text-white transition">
+                  Security
+                </Link>
+              </li>
+              <li>
+                <Link to="/compliance" className="hover:text-white transition">
+                  Compliance
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

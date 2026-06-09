@@ -22,6 +22,7 @@ import kfhOracleRoutes from './routes/kfh-oracle.routes.js';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
+app.set('trust proxy', true);
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())

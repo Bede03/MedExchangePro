@@ -37,12 +37,29 @@ router.post('/', upload.single('file'), (req: Request, res: Response) => {
     return res.status(400).json({ message: 'No file uploaded' });
   }
 
-  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+  const forwardedHostHeader = req.headers['x-forwarded-host'];
+  const forwardedProtoHeader = req.headers['x-forwarded-proto'];
+  const forwardedHost = Array.isArray(forwardedHostHeader)
+    ? forwardedHostHeader[0]
+    : forwardedHostHeader;
+  const forwardedProto = Array.isArray(forwardedProtoHeader)
+    ? forwardedProtoHeader[0]
+    : forwardedProtoHeader;
+
+  const host = forwardedHost?.split(',')[0].trim() || req.get('host');
+  const protocol = forwardedProto?.split(',')[0].trim() || req.protocol || 'http';
+  const baseUrl = process.env.PUBLIC_BACKEND_URL
+    ? (process.env.PUBLIC_BACKEND_URL as string).replace(/\/$/, '')
+    : host
+    ? `${protocol}://${host}`
+    : '';
+  const filePath = `/uploads/${file.filename}`;
+  const fileUrl = baseUrl ? `${baseUrl}${filePath}` : filePath;
 
   return res.status(201).json({
     success: true,
     url: fileUrl,
-    path: `/uploads/${file.filename}`,
+    path: filePath,
     filename: file.filename,
     originalName: file.originalname,
   });
