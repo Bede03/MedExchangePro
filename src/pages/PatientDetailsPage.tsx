@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { apiClient } from '../services/api';
 import { StatusBadge } from '../components/UI/StatusBadge';
+import { Table } from '../components/UI/Table';
 
 const TABS = ['Demographics', 'Medical History', 'Lab Results', 'Documents'] as const;
 
@@ -248,35 +249,47 @@ export function PatientDetailsPage() {
                   <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                     <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Medical history</h3>
                     <div className="mt-5 space-y-6">
-                      <div>
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medication history</h4>
-                        {patient.medications && patient.medications.length > 0 ? (
-                          <div className="mt-3 space-y-4">
-                            {patient.medications.map((med: any) => (
-                              <div key={med.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                  <p className="text-sm font-semibold text-slate-900">{med.medicationName}</p>
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    {med.durationDays
-                                      ? `${med.durationDays} ${med.durationDays === 1 ? 'day' : 'days'}`
-                                      : 'Ongoing'}
-                                  </p>
-                                </div>
-                                <p className="mt-2 text-sm text-slate-700">Dose: {med.dose || 'N/A'}</p>
-                                <p className="mt-1 text-sm text-slate-700">Frequency: {med.frequency || 'N/A'}</p>
-                                <p className="mt-1 text-sm text-slate-700">Prescribed by: {med.prescribedBy ?? 'Unknown'}</p>
-                                <p className="mt-1 text-sm text-slate-700">Diagnosis: {med.diagnosis || 'N/A'}</p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-6">
-                            <p className="text-sm font-medium text-slate-700">No medication history found.</p>
-                            <p className="mt-2 text-sm text-slate-500">Medication records will appear here when available.</p>
-                          </div>
-                        )}
-                      </div>
+                      <section>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Diagnoses</h4>
+                          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                            {(patient.diagnoses ?? []).length} record(s)
+                          </span>
+                        </div>
+                        <Table
+                          columns={[
+                            { header: 'Code', accessor: (row: any) => row.icd10Code || 'N/A' },
+                            { header: 'Diagnosis', accessor: (row: any) => row.description || 'N/A' },
+                            { header: 'Primary', accessor: (row: any) => row.isPrimary ? 'Yes' : 'No' },
+                            { header: 'Confirmed', accessor: (row: any) => (row.confirmedAt ? formatDate(row.confirmedAt) : 'N/A') },
+                          ]}
+                          data={patient.diagnoses ?? []}
+                          rowKey={(row: any) => String(row.id ?? `${row.icd10Code}-${row.confirmedAt}`)}
+                          emptyMessage="No diagnoses found for this patient."
+                        />
+                      </section>
 
+                      <section>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medication history</h4>
+                          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            {(patient.medications ?? []).length} medication(s)
+                          </span>
+                        </div>
+                        <Table
+                          columns={[
+                            { header: 'Medication', accessor: (row: any) => row.medicationName || row.name || 'N/A' },
+                            { header: 'Dose', accessor: (row: any) => row.dose || 'N/A' },
+                            { header: 'Frequency', accessor: (row: any) => row.frequency || 'N/A' },
+                            { header: 'Duration', accessor: (row: any) => row.durationDays ? `${row.durationDays} day(s)` : 'Ongoing' },
+                            { header: 'Prescribed By', accessor: (row: any) => row.prescribedBy || 'Unknown' },
+                            { header: 'Diagnosis', accessor: (row: any) => row.diagnosis || 'N/A' },
+                          ]}
+                          data={patient.medications ?? []}
+                          rowKey={(row: any) => String(row.id ?? `${row.medicationName}-${row.dose}`)}
+                          emptyMessage="No medication history found for this patient."
+                        />
+                      </section>
                     </div>
                   </div>
                 </>

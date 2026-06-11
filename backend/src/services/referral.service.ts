@@ -13,6 +13,18 @@ const prisma = new PrismaClient();
 async function getPatientMedicalDataFromExternalDB(nationalId: string, hospitalName: string, fallbackPatient?: any) {
   const hospitalLower = hospitalName.toLowerCase();
   const isPascalHabimana = fallbackPatient?.name?.toLowerCase().includes('pascal habimana');
+
+  if (fallbackPatient?.id) {
+    try {
+      const patientServiceData = await getPatientMedicalDataUsingPatientService(fallbackPatient, hospitalName);
+      if (patientServiceData?.patient) {
+        console.log(`[DEBUG] Using patient-service resolution for ${hospitalName} (same path as patient page)`);
+        return patientServiceData;
+      }
+    } catch (error) {
+      console.error('[DEBUG] Patient-service resolution failed, falling back to source-specific lookup:', error);
+    }
+  }
   
   if (isPascalHabimana) {
     console.log('[DEBUG] Pascal Habimana lookup started - nationalId:', nationalId, 'hospital:', hospitalName);
@@ -223,6 +235,21 @@ export class ReferralService {
 
     if (!receivingHospital) {
       throw new AppError(404, 'Receiving hospital not found');
+    }
+
+    const patientNationalId = patient.nationalId || data.patientNationalId || data.patientId;
+
+    try {
+      await patientService.getPatientById(String(patientNationalId), receivingHospital.id);
+    } catch (error: any) {
+      const message = error?.message || 'Patient not found in receiving hospital database';
+      if (error?.statusCode === 404 || /patient not found/i.test(message)) {
+        throw new AppError(
+          409,
+          `Patient with national ID ${patientNationalId} does not exist in ${receivingHospital.name}. Referral cannot be submitted.`
+        );
+      }
+      throw error;
     }
 
     // Validate department
