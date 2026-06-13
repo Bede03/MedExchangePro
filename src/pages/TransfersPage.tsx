@@ -72,11 +72,15 @@ export function TransfersPage() {
       (t) => t.fromHospitalId === user.hospital_id || t.toHospitalId === user.hospital_id
     );
 
-    const visibleTransfers = userTransfers.filter((t) =>
-      selectedTab === 'sent'
-        ? t.fromHospitalId === user.hospital_id
-        : t.toHospitalId === user.hospital_id
-    );
+    const isRecipientVisibleStatus = (status: string) => ['in_transit', 'completed'].includes(status);
+
+    const visibleTransfers = userTransfers.filter((t) => {
+      if (selectedTab === 'sent') {
+        return t.fromHospitalId === user.hospital_id;
+      }
+
+      return t.toHospitalId === user.hospital_id && isRecipientVisibleStatus(t.status);
+    });
 
     let result = visibleTransfers.filter((t) => {
       if (!normalized) return true;

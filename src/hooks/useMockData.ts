@@ -104,6 +104,7 @@ export function useMockData() {
           transportType: t.transportType || t.transport_type,
           transportNotes: t.transportNotes || t.transport_notes,
           insuranceType: t.insuranceType || t.insurance_type,
+          receivingService: t.receivingService || t.receiving_service,
           createdAt: t.createdAt || t.created_at,
           fromHospital: t.fromHospital,
           toHospital: t.toHospital,

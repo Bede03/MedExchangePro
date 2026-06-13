@@ -253,14 +253,24 @@ export function ReportsPage() {
   }, [transfers, user]);
 
   const allTransferDepartments = useMemo(() => {
-    return Array.from(
-      new Set(
-        hospitalTransfers
-          .map((transfer) => transfer.receivingService || '')
-          .filter(Boolean) as string[]
-      )
-    ).sort();
-  }, [hospitalTransfers]);
+    const departmentNames = new Set<string>();
+
+    departments.forEach((dept) => {
+      if (dept?.trim()) departmentNames.add(dept.trim());
+    });
+
+    hospitalTransfers.forEach((transfer) => {
+      const receivingService = transfer.receivingService || '';
+
+      receivingService
+        .split(',')
+        .map((dept) => dept.trim())
+        .filter(Boolean)
+        .forEach((dept) => departmentNames.add(dept));
+    });
+
+    return Array.from(departmentNames).sort((a, b) => a.localeCompare(b));
+  }, [departments, hospitalTransfers]);
 
   const filteredTransfers = useMemo(() => {
     let result = [...hospitalTransfers];
@@ -296,9 +306,14 @@ export function ReportsPage() {
     }
 
     if (departmentFilter.length > 0) {
-      result = result.filter((transfer) =>
-        departmentFilter.includes(transfer.receivingService || 'Unknown')
-      );
+      result = result.filter((transfer) => {
+        const services = (transfer.receivingService || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+        return services.some((service) => departmentFilter.includes(service));
+      });
     }
 
     if (statusFilter !== 'all') {
@@ -338,8 +353,19 @@ export function ReportsPage() {
     const departmentCounts: Record<string, number> = {};
 
     filteredTransfers.forEach((transfer: Transfer) => {
-      const department = transfer.receivingService || 'Unknown';
-      departmentCounts[department] = (departmentCounts[department] || 0) + 1;
+      const services = (transfer.receivingService || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      if (services.length === 0) {
+        departmentCounts['Unknown'] = (departmentCounts['Unknown'] || 0) + 1;
+        return;
+      }
+
+      services.forEach((service) => {
+        departmentCounts[service] = (departmentCounts[service] || 0) + 1;
+      });
     });
 
     return Object.entries(departmentCounts).sort((a, b) => b[1] - a[1]);
