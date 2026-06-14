@@ -44,6 +44,8 @@ type StatusFilter =
   | 'in_transit'
   | 'cancelled';
 
+type PriorityFilter = 'all' | 'Emergency' | 'Urgent' | 'Routine' | 'Non-Emergency' | 'Follow-up';
+
 // Chart color definitions
 const STATUS_COLORS: Record<string, string> = {
   pending: '#EAB308',
@@ -72,10 +74,12 @@ export function ReportsPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const [isPriorityMenuOpen, setIsPriorityMenuOpen] = useState(false);
   const [departments, setDepartments] = useState<string[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [departmentsError, setDepartmentsError] = useState<string | null>(null);
@@ -237,12 +241,17 @@ export function ReportsPage() {
     }
 
     // Status filter
-    if (statusFilter !== 'all') {
-      result = result.filter((ref) => ref.status === statusFilter);
+    if (statusFilter.length > 0) {
+      result = result.filter((ref) => statusFilter.includes(ref.status));
+    }
+
+    // Priority filter
+    if (priorityFilter.length > 0) {
+      result = result.filter((ref) => priorityFilter.includes(ref.priority));
     }
 
     return result;
-  }, [hospitalReferrals, dateRange, customStartDate, customEndDate, departmentFilter, statusFilter]);
+  }, [hospitalReferrals, dateRange, customStartDate, customEndDate, departmentFilter, statusFilter, priorityFilter]);
 
   const hospitalTransfers = useMemo(() => {
     if (!user) return [];
@@ -316,12 +325,16 @@ export function ReportsPage() {
       });
     }
 
-    if (statusFilter !== 'all') {
-      result = result.filter((transfer) => transfer.status === statusFilter);
+    if (statusFilter.length > 0) {
+      result = result.filter((transfer) => statusFilter.includes(transfer.status));
+    }
+
+    if (priorityFilter.length > 0) {
+      result = result.filter((transfer) => priorityFilter.includes(transfer.transferType));
     }
 
     return result;
-  }, [hospitalTransfers, dateRange, customStartDate, customEndDate, departmentFilter, statusFilter]);
+  }, [hospitalTransfers, dateRange, customStartDate, customEndDate, departmentFilter, statusFilter, priorityFilter]);
 
   const transferStatusReport = useMemo(() => {
     const statusCounts: Record<string, number> = {
@@ -438,10 +451,24 @@ export function ReportsPage() {
     ? ['all', 'pending', 'approved', 'completed', 'rejected']
     : ['all', 'pending', 'approved', 'in_transit', 'completed', 'cancelled'];
 
-  const statusLabel = (option: StatusFilter) =>
-    option === 'all'
-      ? 'All Statuses'
-      : option.replace(/_/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
+  const priorityOptions: PriorityFilter[] = activeReportTab === 'referrals'
+    ? ['all', 'Emergency', 'Urgent', 'Routine']
+    : ['all', 'Emergency', 'Non-Emergency', 'Follow-up'];
+
+  const formatStatusLabel = (value: string) =>
+    value.replace(/_/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
+
+  const statusLabel = (values: string[]) => {
+    if (values.length === 0) return 'All Statuses';
+    if (values.length === 1) return formatStatusLabel(values[0]);
+    return `${values.length} statuses selected`;
+  };
+
+  const priorityLabel = (values: string[]) => {
+    if (values.length === 0) return 'All Priorities';
+    if (values.length === 1) return values[0];
+    return `${values.length} priorities selected`;
+  };
 
   // Statistics
   const stats = useMemo(() => {
@@ -1073,7 +1100,9 @@ export function ReportsPage() {
         { key: 'count', width: 16 },
       ];
     } else if (isTransferExport) {
-      const statusFilterLabel = statusFilter === 'all' ? 'All statuses' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
+      const statusFilterLabel = statusFilter.length === 0
+        ? 'All statuses'
+        : statusFilter.map((item) => item.charAt(0).toUpperCase() + item.slice(1)).join(', ');
       const departmentFilterLabel = departmentFilter.length === 0 ? 'All departments' : departmentFilter.join('; ');
       const reportScope = `${filteredTransfers.length} transfers included`;
 
@@ -1156,7 +1185,9 @@ export function ReportsPage() {
       sheet.getRow(tableStartRow).alignment = { vertical: 'middle', horizontal: 'left' };
       sheet.views = [{ state: 'frozen', ySplit: tableStartRow }];
     } else {
-      const statusFilterLabel = statusFilter === 'all' ? 'All statuses' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
+      const statusFilterLabel = statusFilter.length === 0
+        ? 'All statuses'
+        : statusFilter.map((item) => item.charAt(0).toUpperCase() + item.slice(1)).join(', ');
       const departmentFilterLabel = departmentFilter.length === 0 ? 'All departments' : departmentFilter.join('; ');
 
       const headers = [
@@ -1374,7 +1405,7 @@ export function ReportsPage() {
               <h3 className="font-semibold text-slate-900">Filters</h3>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             {/* Date Range Filter */}
             <div className="relative">
               <button
@@ -1382,6 +1413,7 @@ export function ReportsPage() {
                   setIsDateMenuOpen(!isDateMenuOpen);
                   setIsDepartmentMenuOpen(false);
                   setIsStatusMenuOpen(false);
+                  setIsPriorityMenuOpen(false);
                 }}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 flex items-center justify-between hover:border-slate-400 transition-colors"
               >
@@ -1438,6 +1470,7 @@ export function ReportsPage() {
                   setIsDepartmentMenuOpen(!isDepartmentMenuOpen);
                   setIsDateMenuOpen(false);
                   setIsStatusMenuOpen(false);
+                  setIsPriorityMenuOpen(false);
                 }}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 flex items-center justify-between hover:border-slate-400 transition-colors"
               >
@@ -1530,6 +1563,7 @@ export function ReportsPage() {
                   setIsStatusMenuOpen(!isStatusMenuOpen);
                   setIsDateMenuOpen(false);
                   setIsDepartmentMenuOpen(false);
+                  setIsPriorityMenuOpen(false);
                 }}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 flex items-center justify-between hover:border-slate-400 transition-colors"
               >
@@ -1538,19 +1572,90 @@ export function ReportsPage() {
               </button>
 
               {isStatusMenuOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10">
-                  {statusOptions.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setStatusFilter(option);
-                        setIsStatusMenuOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 first:rounded-t-lg last:rounded-b-lg"
-                    >
-                      {statusLabel(option)}
-                    </button>
-                  ))}
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-64 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setStatusFilter([]);
+                      setIsStatusMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 first:rounded-t-lg border-b border-slate-200"
+                  >
+                    All Statuses
+                  </button>
+                  <div className="p-2 space-y-1">
+                    {statusOptions.filter((option) => option !== 'all').map((option) => (
+                      <label
+                        key={option}
+                        className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-slate-100 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={statusFilter.includes(option)}
+                          onChange={() => {
+                            setStatusFilter((prev) =>
+                              prev.includes(option)
+                                ? prev.filter((item) => item !== option)
+                                : [...prev, option]
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span>{formatStatusLabel(option)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Priority Filter */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setIsPriorityMenuOpen(!isPriorityMenuOpen);
+                  setIsDateMenuOpen(false);
+                  setIsDepartmentMenuOpen(false);
+                  setIsStatusMenuOpen(false);
+                }}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 flex items-center justify-between hover:border-slate-400 transition-colors"
+              >
+                <span>{priorityLabel(priorityFilter)}</span>
+                <ChevronDown size={16} className={`transition-transform ${isPriorityMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isPriorityMenuOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-64 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setPriorityFilter([]);
+                      setIsPriorityMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 first:rounded-t-lg border-b border-slate-200"
+                  >
+                    All Priorities
+                  </button>
+                  <div className="p-2 space-y-1">
+                    {priorityOptions.filter((option) => option !== 'all').map((option) => (
+                      <label
+                        key={option}
+                        className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-slate-100 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={priorityFilter.includes(option)}
+                          onChange={() => {
+                            setPriorityFilter((prev) =>
+                              prev.includes(option)
+                                ? prev.filter((item) => item !== option)
+                                : [...prev, option]
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, FileText, HeartPulse, Folder, Paperclip, Download } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileText, HeartPulse, Folder, Paperclip, Download, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMockData } from '../hooks/useMockData';
 import { apiClient } from '../services/api';
@@ -20,7 +20,7 @@ export function PatientDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hospitals, referrals, patients } = useMockData();
+  const { hospitals, referrals, patients, transfers } = useMockData();
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,12 +68,79 @@ export function PatientDetailsPage() {
     [hospitals, patient?.hospitalId]
   );
 
-  const patientReferrals = useMemo(
-    () => referrals.filter((r) => r.patient_id === id),
-    [referrals, id]
-  );
+  const patientReferrals = useMemo(() => {
+    const currentPatientId = localPatient?.id ?? patient?.id ?? null;
+    const currentNationalId = localPatient?.national_id ?? patient?.nationalId ?? null;
+    const routeIdNormalized = normalizedRouteId;
+
+    return referrals.filter((r) => {
+      const matchesPatientId = currentPatientId ? r.patient_id === currentPatientId : false;
+      const matchesNationalId = currentNationalId
+        ? r.patient_national_id === currentNationalId || r.patient_id === currentNationalId
+        : false;
+      const matchesRouteId = routeIdNormalized ? r.patient_id === routeIdNormalized || r.patient_national_id === routeIdNormalized : false;
+
+      return matchesPatientId || matchesNationalId || matchesRouteId;
+    });
+  }, [referrals, localPatient, patient, normalizedRouteId]);
+
+  const patientTransfers = useMemo(() => {
+    const currentNationalId = localPatient?.national_id ?? patient?.nationalId ?? null;
+    const currentPatientName = (patient?.name ?? localPatient?.name ?? '').trim().toLowerCase();
+
+    return transfers.filter((transfer) => {
+      const matchesNationalId = currentNationalId
+        ? transfer.patientNationalId === currentNationalId || transfer.patientName === currentNationalId
+        : false;
+      const matchesPatientName = currentPatientName
+        ? transfer.patientName?.toLowerCase() === currentPatientName
+        : false;
+      const matchesRouteId = normalizedRouteId
+        ? transfer.patientNationalId === normalizedRouteId || transfer.patientName === normalizedRouteId
+        : false;
+
+      return matchesNationalId || matchesPatientName || matchesRouteId;
+    });
+  }, [transfers, localPatient, patient, normalizedRouteId]);
 
   const [activeTab, setActiveTab] = useState<Tab>('Demographics');
+
+  const externalDocumentEntries = useMemo(() => {
+    const entries: Array<{ title: string; text: string; source: string }> = [];
+
+    const addEntry = (text: string, source: string, title?: string) => {
+      const normalized = (text ?? '').toString().trim();
+      if (!normalized || /no documents available/i.test(normalized) || /no diagnoses found/i.test(normalized)) {
+        return;
+      }
+
+      const lines = normalized
+        .split(/\r?\n|;\s*/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (lines.length === 0) return;
+
+      lines.forEach((line, index) => {
+        entries.push({
+          title: title && index === 0 ? title : 'Document',
+          text: line,
+          source,
+        });
+      });
+    };
+
+    if (Array.isArray(externalHistory)) {
+      externalHistory.forEach((record: any) => {
+        const documentText = record?.patient_documents || record?.documents || record?.diagnosis || record?.description;
+        if (documentText) {
+          addEntry(String(documentText), record?.source_system || 'External hospital database');
+        }
+      });
+    }
+
+    return entries;
+  }, [patient, externalHistory]);
 
   if (loading) {
     return (
@@ -335,32 +402,27 @@ export function PatientDetailsPage() {
 
           {activeTab === 'Documents' && (
             <div>
-              {patientReferrals.filter(r => r.attachmentUrl).length === 0 ? (
+              {externalDocumentEntries.length === 0 ? (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
-                  <p className="text-sm font-medium text-slate-700">No documents uploaded.</p>
-                  <p className="mt-2 text-sm text-slate-500">Add documents to keep patient records complete.</p>
+                  <p className="text-sm font-medium text-slate-700">No external hospital documents available.</p>
+                  <p className="mt-2 text-sm text-slate-500">Documents from the external hospital database will appear here when they exist.</p>
                 </div>
               ) : (
                 <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm font-semibold text-slate-900 mb-4">Patient Documents</p>
+                  <p className="text-sm font-semibold text-slate-900 mb-1">External hospital documents</p>
+                  <p className="mb-4 text-xs text-slate-500">Only records available from the external hospital database are shown in this tab.</p>
                   <div className="space-y-3">
-                    {patientReferrals.filter(r => r.attachmentUrl).map((r) => (
-                      <div key={r.id} className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 p-3">
-                        <div className="flex items-center gap-3">
-                          <Paperclip className="h-5 w-5 text-slate-600" />
+                    {externalDocumentEntries.map((entry, index) => (
+                      <article key={`${entry.source}-${index}`} className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="text-sm font-medium text-slate-900">{((r.attachmentUrl || '').split('/').pop() || 'attachment').replace(/^\d+-/, '')}</p>
-                            <p className="text-xs text-slate-500">Attached to referral · {formatDate(r.created_at)}</p>
+                            <p className="text-sm font-semibold text-slate-900">{entry.title}</p>
+                            <p className="text-xs uppercase tracking-wide text-slate-500">{entry.source}</p>
                           </div>
+                          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">External record</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <a href={r.attachmentUrl} target="_blank" rel="noreferrer" className="text-sm text-slate-700 hover:text-indigo-600">Preview</a>
-                          <a href={r.attachmentUrl} download className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-                            <Download className="h-4 w-4" />
-                            <span>Download</span>
-                          </a>
-                        </div>
-                      </div>
+                        <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{entry.text}</p>
+                      </article>
                     ))}
                   </div>
                 </div>
@@ -387,6 +449,7 @@ export function PatientDetailsPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Reason</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -415,6 +478,86 @@ export function PatientDetailsPage() {
                         <StatusBadge status={ref.status} />
                       </td>
                       <td className="px-4 py-3 text-right text-sm text-slate-700">{formatDate(ref.created_at)}</td>
+                      <td className="px-4 py-3 text-right text-sm text-slate-700">
+                        <Link
+                          to={`/referrals/${ref.id}`}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Transfers</h2>
+            <p className="mt-1 text-sm text-slate-500">Transfers associated with this patient.</p>
+          </div>
+          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+            {patientTransfers.length} record{patientTransfers.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {patientTransfers.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">No transfers yet.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Transfer Id</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">From</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">To</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Reason</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {patientTransfers.map((transfer) => {
+                  const from = hospitals.find((h) => h.id === transfer.fromHospitalId);
+                  const to = hospitals.find((h) => h.id === transfer.toHospitalId);
+                  const statusClassMap: Record<string, string> = {
+                    pending: 'bg-amber-100 text-amber-800',
+                    approved: 'bg-emerald-100 text-emerald-800',
+                    in_transit: 'bg-sky-100 text-sky-800',
+                    completed: 'bg-indigo-100 text-indigo-800',
+                    cancelled: 'bg-rose-100 text-rose-800',
+                  };
+
+                  return (
+                    <tr key={transfer.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 text-sm font-semibold text-indigo-600">{transfer.transferNumber != null ? `TRF-${transfer.transferNumber}` : transfer.transferId}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{from?.name ?? 'Unknown'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{to?.name ?? 'Unknown'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{transfer.transferType}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{transfer.reasonForTransfer || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClassMap[transfer.status] ?? 'bg-slate-100 text-slate-800'}`}>
+                          {transfer.status === 'in_transit' ? 'In Transit' : transfer.status.charAt(0).toUpperCase() + transfer.status.slice(1).replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-slate-700">{formatDate(transfer.createdAt)}</td>
+                      <td className="px-4 py-3 text-right text-sm text-slate-700">
+                        <Link
+                          to={`/transfers/${transfer.id}`}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}

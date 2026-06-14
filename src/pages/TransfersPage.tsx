@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Eye, Search, PlusCircle, Check } from 'lucide-react';
+import { Eye, Search, PlusCircle, Check, Paperclip } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../services/api';
@@ -153,6 +153,12 @@ export function TransfersPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
 
+  const handleTabChange = (tab: TransferTab) => {
+    if (tab === selectedTab) return;
+    setSelectedTab(tab);
+    setCurrentPage(1);
+  };
+
   useEffect(() => {
     setCurrentPage(1);
   }, [search, sortBy, statusSort, sortDirection, selectedTab]);
@@ -218,7 +224,7 @@ export function TransfersPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setSelectedTab('sent')}
+            onClick={() => handleTabChange('sent')}
             className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
               selectedTab === 'sent'
                 ? 'bg-indigo-600 text-white'
@@ -229,7 +235,7 @@ export function TransfersPage() {
           </button>
           <button
             type="button"
-            onClick={() => setSelectedTab('received')}
+            onClick={() => handleTabChange('received')}
             className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
               selectedTab === 'received'
                 ? 'bg-indigo-600 text-white'
@@ -453,6 +459,31 @@ export function TransfersPage() {
                   {formatStatusLabel(row.status)}
                 </span>
               ),
+            },
+            {
+              header: 'Documents',
+              accessor: (row) => {
+                const documents = String(
+                  row.externalPatientData?.patient?.patient_documents || row.patientDocuments || ''
+                )
+                  .split(/\r?\n|;\s*/)
+                  .map((item: string) => item.trim())
+                  .filter(Boolean);
+
+                if (documents.length === 0) {
+                  return <span className="text-sm text-slate-400">—</span>;
+                }
+
+                return (
+                  <Link
+                    to={`/transfers/${row.id}`}
+                    className="inline-flex items-center gap-2 text-sm text-slate-700 hover:text-indigo-600"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    <span>{documents.length} file{documents.length === 1 ? '' : 's'}</span>
+                  </Link>
+                );
+              },
             },
             {
               header: 'Actions',

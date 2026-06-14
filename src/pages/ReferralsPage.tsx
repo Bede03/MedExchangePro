@@ -158,10 +158,16 @@ export function ReferralsPage() {
     displayIndex: (item as any).referral_number || (startIndex + index + 1),
   }));
 
-  // Reset to first page when search or sort changes
+  const handleTabChange = (tab: ReferralTab) => {
+    if (tab === selectedTab) return;
+    setSelectedTab(tab);
+    setCurrentPage(1);
+  };
+
+  // Reset to first page when search, sort, or tab changes
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [search, sortBy, statusSort]);
+  }, [search, sortBy, statusSort, selectedTab]);
 
   return (
     <div className="space-y-6">
@@ -172,7 +178,7 @@ export function ReferralsPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setSelectedTab('sent')}
+              onClick={() => handleTabChange('sent')}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
                 selectedTab === 'sent'
                   ? 'bg-indigo-600 text-white'
@@ -183,7 +189,7 @@ export function ReferralsPage() {
             </button>
             <button
               type="button"
-              onClick={() => setSelectedTab('received')}
+              onClick={() => handleTabChange('received')}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
                 selectedTab === 'received'
                   ? 'bg-indigo-600 text-white'

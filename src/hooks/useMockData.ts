@@ -61,6 +61,7 @@ export function useMockData() {
         const mappedReferrals = referralData.map((r: any) => ({
           id: r.id,
           patient_id: r.patientId,
+          patient_national_id: r.patient?.nationalId || r.patientNationalId || null,
           patient_name: r.patient?.name || '',
           reason: r.reason,
           status: r.status,
