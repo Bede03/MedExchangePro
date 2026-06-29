@@ -243,7 +243,7 @@ export function NewReferralPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="relative">
               <label className="text-sm font-medium text-slate-700" htmlFor="patient">
-                Patient *
+                Patient<span className="ml-1 text-rose-500">*</span>
               </label>
               <input
                 id="patient"
@@ -290,7 +290,7 @@ export function NewReferralPage() {
 
             <div>
               <label className="text-sm font-medium text-slate-700" htmlFor="receivingHospital">
-                Receiving Hospital *
+                Receiving Hospital<span className="ml-1 text-rose-500">*</span>
               </label>
               <select
                 id="receivingHospital"
@@ -317,7 +317,7 @@ export function NewReferralPage() {
 
             <div>
               <label className="text-sm font-medium text-slate-700" htmlFor="priority">
-                Priority Level *
+                Priority Level<span className="ml-1 text-rose-500">*</span>
               </label>
               <select
                 id="priority"
@@ -334,7 +334,9 @@ export function NewReferralPage() {
             </div>
 
             <div className="relative">
-              <label className="text-sm font-medium text-slate-700">Department *</label>
+              <label className="text-sm font-medium text-slate-700">
+                Department<span className="ml-1 text-rose-500">*</span>
+              </label>
               <button
                 type="button"
                 onClick={() => setDepartmentOpen((open) => !open)}
@@ -386,7 +388,9 @@ export function NewReferralPage() {
             </div>
 
             <div className="md:col-span-2">
-              <p className="text-sm font-medium text-slate-700">Reason(s) for Referral *</p>
+              <p className="text-sm font-medium text-slate-700">
+                Reason(s) for Referral<span className="ml-1 text-rose-500">*</span>
+              </p>
               <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 max-h-52 overflow-auto">
                 {referralReasons.map((reasonOption) => (
                   <label key={reasonOption} className="inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm text-slate-900 hover:border-indigo-300">
@@ -412,7 +416,7 @@ export function NewReferralPage() {
             {selectedReasons.includes('Other') && (
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-slate-700" htmlFor="reasonDetails">
-                  Other reason details *
+                  Other reason details<span className="ml-1 text-rose-500">*</span>
                 </label>
                 <textarea
                   id="reasonDetails"

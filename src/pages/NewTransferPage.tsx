@@ -239,7 +239,9 @@ export function NewTransferPage() {
         <section className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="relative">
-              <label htmlFor="patient" className="text-sm font-medium text-slate-700">Patient</label>
+              <label htmlFor="patient" className="text-sm font-medium text-slate-700">
+                Patient<span className="ml-1 text-rose-500">*</span>
+              </label>
               <input
                 id="patient"
                 type="text"
@@ -284,7 +286,9 @@ export function NewTransferPage() {
             </div>
 
             <div>
-              <label htmlFor="receivingHospital" className="text-sm font-medium text-slate-700">Receiving Hospital</label>
+              <label htmlFor="receivingHospital" className="text-sm font-medium text-slate-700">
+                Receiving Hospital<span className="ml-1 text-rose-500">*</span>
+              </label>
               <select
                 id="receivingHospital"
                 value={receivingHospitalId}
@@ -306,14 +310,14 @@ export function NewTransferPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-slate-700">Referring Hospital</label>
+              <label className="text-sm font-medium text-slate-700">Referring Hospital<span className="ml-1 text-rose-500">*</span></label>
               <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900">
                 {requestingHospital?.name ?? 'Not available'}
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700">Referring Clinician</label>
+              <label className="text-sm font-medium text-slate-700">Referring Clinician<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={referringClinician}
                 onChange={(e) => setReferringClinician(e.target.value)}
@@ -324,7 +328,7 @@ export function NewTransferPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-slate-700">Referring Phone</label>
+              <label className="text-sm font-medium text-slate-700">Referring Phone<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={referringPhone}
                 onChange={(e) => setReferringPhone(e.target.value)}
@@ -334,7 +338,7 @@ export function NewTransferPage() {
             </div>
 
             <div className="relative">
-              <label className="text-sm font-medium text-slate-700">Receiving Service/ Unit</label>
+              <label className="text-sm font-medium text-slate-700">Receiving Service/ Unit<span className="ml-1 text-rose-500">*</span></label>
               <button
                 type="button"
                 onClick={() => setReceivingServiceOpen((open) => !open)}
@@ -395,7 +399,7 @@ export function NewTransferPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700">Transfer Type</label>
+              <label className="text-sm font-medium text-slate-700">Transfer Type<span className="ml-1 text-rose-500">*</span></label>
               <select
                 value={transferType}
                 onChange={(e) => setTransferType(e.target.value as typeof transferTypes[number])}
@@ -412,7 +416,7 @@ export function NewTransferPage() {
         <section className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-slate-700">Admission Date</label>
+              <label className="text-sm font-medium text-slate-700">Admission Date<span className="ml-1 text-rose-500">*</span></label>
               <input
                 type="date"
                 value={admissionDate}
@@ -421,7 +425,7 @@ export function NewTransferPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Admission Time</label>
+              <label className="text-sm font-medium text-slate-700">Admission Time<span className="ml-1 text-rose-500">*</span></label>
               <input
                 type="time"
                 value={admissionTime}
@@ -433,7 +437,7 @@ export function NewTransferPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-slate-700">Decision Date</label>
+              <label className="text-sm font-medium text-slate-700">Decision Date<span className="ml-1 text-rose-500">*</span></label>
               <input
                 type="date"
                 value={decisionDate}
@@ -442,7 +446,7 @@ export function NewTransferPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Decision Time</label>
+              <label className="text-sm font-medium text-slate-700">Decision Time<span className="ml-1 text-rose-500">*</span></label>
               <input
                 type="time"
                 value={decisionTime}
@@ -454,7 +458,7 @@ export function NewTransferPage() {
 
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <label className="text-sm font-medium text-slate-700">Temperature (°C)</label>
+              <label className="text-sm font-medium text-slate-700">Temperature (°C)<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={temperature}
                 onChange={(e) => setTemperature(e.target.value)}
@@ -463,7 +467,7 @@ export function NewTransferPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">SpO₂ (%)</label>
+              <label className="text-sm font-medium text-slate-700">SpO₂ (%)<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={spo2}
                 onChange={(e) => setSpo2(e.target.value)}
@@ -472,7 +476,7 @@ export function NewTransferPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">RR</label>
+              <label className="text-sm font-medium text-slate-700">RR<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={rr}
                 onChange={(e) => setRr(e.target.value)}
@@ -484,7 +488,7 @@ export function NewTransferPage() {
 
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <label className="text-sm font-medium text-slate-700">Pulse</label>
+              <label className="text-sm font-medium text-slate-700">Pulse<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={pulse}
                 onChange={(e) => setPulse(e.target.value)}
@@ -493,7 +497,7 @@ export function NewTransferPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">BP</label>
+              <label className="text-sm font-medium text-slate-700">BP<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={bp}
                 onChange={(e) => setBp(e.target.value)}
@@ -502,7 +506,7 @@ export function NewTransferPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Weight / MUAC</label>
+              <label className="text-sm font-medium text-slate-700">Weight / MUAC<span className="ml-1 text-rose-500">*</span></label>
               <div className="grid gap-2 md:grid-cols-2">
                 <input
                   value={weight}
@@ -524,7 +528,7 @@ export function NewTransferPage() {
         <section className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-slate-700">Reason for Transfer</label>
+              <label className="text-sm font-medium text-slate-700">Reason for Transfer<span className="ml-1 text-rose-500">*</span></label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -534,7 +538,7 @@ export function NewTransferPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700">Significant Findings</label>
+              <label className="text-sm font-medium text-slate-700">Significant Findings<span className="ml-1 text-rose-500">*</span></label>
               <textarea
                 value={significantFindings}
                 onChange={(e) => setSignificantFindings(e.target.value)}
@@ -546,7 +550,7 @@ export function NewTransferPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-slate-700">Clinical Presentation</label>
+              <label className="text-sm font-medium text-slate-700">Clinical Presentation<span className="ml-1 text-rose-500">*</span></label>
               <textarea
                 value={clinicalPresentation}
                 onChange={(e) => setClinicalPresentation(e.target.value)}
@@ -556,7 +560,7 @@ export function NewTransferPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700">Immediate Condition</label>
+              <label className="text-sm font-medium text-slate-700">Immediate Condition<span className="ml-1 text-rose-500">*</span></label>
               <textarea
                 value={immediateCondition}
                 onChange={(e) => setImmediateCondition(e.target.value)}
@@ -580,7 +584,7 @@ export function NewTransferPage() {
 
           <div className="grid gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-700">Diagnosis</label>
+              <label className="text-sm font-medium text-slate-700">Diagnosis<span className="ml-1 text-rose-500">*</span></label>
               <textarea
                 value={diagnosis}
                 onChange={(e) => setDiagnosis(e.target.value)}
@@ -590,7 +594,7 @@ export function NewTransferPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700">Procedures / Treatments</label>
+              <label className="text-sm font-medium text-slate-700">Procedures / Treatments<span className="ml-1 text-rose-500">*</span></label>
               <textarea
                 value={procedures}
                 onChange={(e) => setProcedures(e.target.value)}
@@ -600,7 +604,7 @@ export function NewTransferPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700">Medications</label>
+              <label className="text-sm font-medium text-slate-700">Medications<span className="ml-1 text-rose-500">*</span></label>
               <textarea
                 value={medications}
                 onChange={(e) => setMedications(e.target.value)}
@@ -613,7 +617,7 @@ export function NewTransferPage() {
 
         <section className="grid gap-4 md:grid-cols-3">
           <div>
-            <label className="text-sm font-medium text-slate-700">Transport</label>
+            <label className="text-sm font-medium text-slate-700">Transport<span className="ml-1 text-rose-500">*</span></label>
             <select
               value={transportType}
               onChange={(e) => setTransportType(e.target.value as typeof transportTypes[number])}
@@ -626,7 +630,7 @@ export function NewTransferPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700">Insurance</label>
+            <label className="text-sm font-medium text-slate-700">Insurance<span className="ml-1 text-rose-500">*</span></label>
             <select
               value={insuranceType}
               onChange={(e) => setInsuranceType(e.target.value as typeof insuranceOptions[number])}
@@ -640,7 +644,7 @@ export function NewTransferPage() {
 
           {insuranceType === 'Other' ? (
             <div>
-              <label className="text-sm font-medium text-slate-700">Other Insurance</label>
+              <label className="text-sm font-medium text-slate-700">Other Insurance<span className="ml-1 text-rose-500">*</span></label>
               <input
                 value={insuranceOther}
                 onChange={(e) => setInsuranceOther(e.target.value)}
